@@ -243,8 +243,18 @@
     window.addEventListener('menu-open-file', () => handleOpenFile());
     window.addEventListener('menu-save', () => handleSave());
     window.addEventListener('menu-save-as', () => handleSaveAs());
+    window.addEventListener('menu-close-tab', () => {
+      const tab = tabsStore.activeTab;
+      if (tab) {
+        if (tab.content !== tab.savedContent) {
+          handleTabCloseRequest({ detail: { tabId: tab.id } } as CustomEvent);
+        } else {
+          tabsStore.forceCloseTab(tab.id);
+        }
+      }
+    });
 
-    const unlisten = getAppWindow().listen<string[]>('file-opened', async (event) => {
+    const unlistenFileOpened = getAppWindow().listen<string[]>('file-opened', async (event) => {
       for (const filePath of event.payload) {
         try {
           const payload = await invoke<FilePayload>('read_file', { path: filePath });
@@ -256,11 +266,16 @@
       }
     });
 
+    const unlistenMenu = getAppWindow().listen<string>('menu-find', () => { showFindReplace = true; });
+    const unlistenMenuReplace = getAppWindow().listen<string>('menu-find-replace', () => { showFindReplace = true; });
+
     return () => {
       window.removeEventListener('keydown', handleGlobalKeydown);
       window.removeEventListener('tab-close-request', handleTabCloseRequest as unknown as EventListener);
       window.removeEventListener('window-close-request', handleCloseRequest);
-      unlisten.then(fn => fn());
+      unlistenFileOpened.then(fn => fn());
+      unlistenMenu.then(fn => fn());
+      unlistenMenuReplace.then(fn => fn());
     };
   });
 </script>
