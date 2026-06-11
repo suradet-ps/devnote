@@ -7,22 +7,28 @@
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "bun run build",
-    "frontendDist": "../build"
+    "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
+        "label": "main",
         "title": "text-rs",
         "width": 1200,
         "height": 800,
         "minWidth": 600,
         "minHeight": 400,
-        "decorations": false,
+        "center": true,
+        "visible": true,
+        "focus": true,
+        "resizable": true,
+        "decorations": true,
         "transparent": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.googleapis.com data:; connect-src 'self' ipc: http://ipc.localhost; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     }
   },
   "bundle": {

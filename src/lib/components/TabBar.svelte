@@ -120,7 +120,6 @@
     overflow-x: auto;
     scrollbar-width: none;
     flex: 1;
-    padding-left: 80px;
   }
 
   .tabbar-scroll::-webkit-scrollbar {

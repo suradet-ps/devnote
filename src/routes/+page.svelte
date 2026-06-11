@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import TitleBar from '$lib/components/TitleBar.svelte';
   import TabBar from '$lib/components/TabBar.svelte';
   import Editor from '$lib/components/Editor.svelte';
   import StatusBar from '$lib/components/StatusBar.svelte';
@@ -10,23 +9,16 @@
   import { recentStore } from '$lib/stores/recent.svelte';
   import { settingsStore } from '$lib/stores/settings.svelte';
   import { invoke } from '@tauri-apps/api/core';
-  import type { FilePayload } from '$lib/stores/tabs.svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
+  import type { FilePayload } from '$lib/stores/tabs.svelte';
 
-  let appWindow: ReturnType<typeof getCurrentWindow> | null = null;
-
-  function getAppWindow() {
-    if (!appWindow) appWindow = getCurrentWindow();
-    return appWindow;
-  }
+  const appWindow = getCurrentWindow();
 
   let showFindReplace = $state(false);
-  let findReplaceMode = $state<'find' | 'replace'>('find');
 
   let confirmOpen = $state(false);
   let confirmTitle = $state('');
   let confirmMessage = $state('');
-  let confirmAction = $state<'save' | 'discard' | 'cancel'>('cancel');
   let confirmResolve: ((value: string) => void) | null = null;
 
   function showConfirmDialog(title: string, message: string): Promise<string> {
@@ -142,10 +134,10 @@
     }
   }
 
-  async function handleWindowCloseRequest() {
+  async function handleCloseRequest() {
     const dirtyTabs = tabsStore.getDirtyTabs();
     if (dirtyTabs.length === 0) {
-      getAppWindow().close();
+      appWindow.close();
       return;
     }
 
@@ -165,9 +157,9 @@
           }
         }
       }
-      getAppWindow().close();
+      appWindow.close();
     } else if (result === 'discard') {
-      getAppWindow().close();
+      appWindow.close();
     }
   }
 
@@ -198,11 +190,9 @@
       }
     } else if (mod && e.key === 'f') {
       e.preventDefault();
-      findReplaceMode = 'find';
       showFindReplace = !showFindReplace;
     } else if (mod && e.key === 'h') {
       e.preventDefault();
-      findReplaceMode = 'replace';
       showFindReplace = true;
     } else if (mod && e.key === '=') {
       e.preventDefault();
@@ -217,6 +207,7 @@
       e.preventDefault();
       settingsStore.toggleWordWrap();
     } else if (e.key === 'Tab' && !mod) {
+      e.preventDefault();
       const tabIds = tabsStore.tabs.map(t => t.id);
       const currentIdx = tabIds.indexOf(tabsStore.activeTabId ?? '');
       if (e.shiftKey) {
@@ -227,19 +218,12 @@
         tabsStore.setActive(tabIds[nextIdx]);
       }
     } else if (mod && e.key >= '1' && e.key <= '9') {
+      e.preventDefault();
       const idx = parseInt(e.key) - 1;
       if (idx < tabsStore.tabs.length) {
         tabsStore.setActive(tabsStore.tabs[idx].id);
       }
     }
-  }
-
-  function handleFindReplaceFind(query: string) {
-    // TODO: integrate with CodeMirror search
-  }
-
-  function handleFindReplaceReplace(query: string, replacement: string) {
-    // TODO: integrate with CodeMirror search
   }
 
   onMount(() => {
@@ -250,31 +234,25 @@
 
     window.addEventListener('keydown', handleGlobalKeydown);
     window.addEventListener('tab-close-request', handleTabCloseRequest as unknown as EventListener);
-    window.addEventListener('window-close-request', handleWindowCloseRequest);
-
-    const unlisten = getAppWindow().onCloseRequested(async (event) => {
-      event.preventDefault();
-      await handleWindowCloseRequest();
-    });
+    window.addEventListener('window-close-request', handleCloseRequest);
 
     return () => {
       window.removeEventListener('keydown', handleGlobalKeydown);
       window.removeEventListener('tab-close-request', handleTabCloseRequest as unknown as EventListener);
-      window.removeEventListener('window-close-request', handleWindowCloseRequest);
+      window.removeEventListener('window-close-request', handleCloseRequest);
     };
   });
 </script>
 
 <div class="app">
-  <TitleBar />
   <TabBar />
   <div class="editor-area">
     {#if tabsStore.activeTab}
       <FindReplace
         show={showFindReplace}
         onClose={() => showFindReplace = false}
-        onFind={handleFindReplaceFind}
-        onReplace={handleFindReplaceReplace}
+        onFind={() => {}}
+        onReplace={() => {}}
       />
       <Editor
         tabId={tabsStore.activeTab.id}
@@ -309,8 +287,6 @@
     flex-direction: column;
     background: var(--canvas);
     overflow: hidden;
-    border: 1px solid var(--hairline);
-    border-radius: 10px;
   }
 
   .editor-area {
