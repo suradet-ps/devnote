@@ -6,22 +6,65 @@
     onclick: () => void;
     onclose: () => void;
     oncontextmenu: (e: MouseEvent) => void;
+    onrename: (name: string) => void;
   }
 
-  let { fileName, isDirty, isActive, onclick, onclose, oncontextmenu }: Props = $props();
+  let { fileName, isDirty, isActive, onclick, onclose, oncontextmenu, onrename }: Props = $props();
+
+  let editing = $state(false);
+  let editValue = $state('');
+  let inputEl: HTMLInputElement;
+
+  function handleDblClick() {
+    editValue = fileName;
+    editing = true;
+    setTimeout(() => {
+      inputEl?.focus();
+      inputEl?.select();
+    }, 0);
+  }
+
+  function commitRename() {
+    const name = editValue.trim();
+    if (name && name !== fileName) {
+      onrename(name);
+    }
+    editing = false;
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      commitRename();
+    } else if (e.key === 'Escape') {
+      editing = false;
+    }
+  }
 </script>
 
 <div
   class="tab"
   class:active={isActive}
   {onclick}
+  ondblclick={handleDblClick}
   oncontextmenu={(e) => { e.preventDefault(); oncontextmenu(e); }}
   onkeydown={(e) => e.key === 'Enter' && onclick()}
   role="tab"
   tabindex="-1"
 >
-  <span class="tab-name">{fileName}</span>
-  {#if isDirty}
+  {#if editing}
+    <input
+      bind:this={inputEl}
+      class="tab-rename-input"
+      type="text"
+      bind:value={editValue}
+      onblur={commitRename}
+      onkeydown={handleKeydown}
+      onclick={(e) => e.stopPropagation()}
+    />
+  {:else}
+    <span class="tab-name">{fileName}</span>
+  {/if}
+  {#if isDirty && !editing}
     <span class="tab-dot">•</span>
   {/if}
   <button
@@ -77,6 +120,20 @@
     color: var(--primary);
     font-size: 14px;
     line-height: 1;
+  }
+
+  .tab-rename-input {
+    width: 100%;
+    min-width: 40px;
+    height: 20px;
+    padding: 0 4px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--ink);
+    background: var(--canvas);
+    border: 1px solid var(--primary);
+    border-radius: var(--r-xs);
+    outline: none;
   }
 
   .tab-close {

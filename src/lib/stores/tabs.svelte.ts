@@ -111,6 +111,10 @@ export const tabsStore = {
     }
   },
 
+  renameTab(id: string, newName: string) {
+    _tabs = _tabs.map(t => t.id === id ? { ...t, fileName: newName } : t);
+  },
+
   updateCursor(id: string, line: number, col: number) {
     _tabs = _tabs.map(t => t.id === id ? { ...t, cursorLine: line, cursorCol: col } : t);
   },

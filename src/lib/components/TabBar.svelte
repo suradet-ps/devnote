@@ -62,6 +62,17 @@
     }
     closeContextMenu();
   }
+
+  function renameTab() {
+    const tab = tabsStore.tabs.find(t => t.id === contextMenuTabId);
+    if (tab) {
+      const name = prompt('Rename tab:', tab.fileName);
+      if (name && name.trim() && name.trim() !== tab.fileName) {
+        tabsStore.renameTab(tab.id, name.trim());
+      }
+    }
+    closeContextMenu();
+  }
 </script>
 
 <div class="tabbar">
@@ -74,6 +85,7 @@
         onclick={() => handleTabClick(tab.id)}
         onclose={() => handleTabClose(tab.id)}
         oncontextmenu={(e) => handleContextMenu(e, tab.id)}
+        onrename={(name) => tabsStore.renameTab(tab.id, name)}
       />
     {/each}
   </div>
@@ -127,6 +139,9 @@
       </button>
       <button class="context-menu-item" onclick={closeAllTabs}>
         Close All
+      </button>
+      <button class="context-menu-item" onclick={renameTab}>
+        Rename
       </button>
       {#if tabsStore.tabs.find(t => t.id === contextMenuTabId)?.path}
         <div class="context-menu-sep"></div>
