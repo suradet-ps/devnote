@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicholasrice/tauri-settings-schema/main/schema.json",
+  "productName": "text-rs",
+  "version": "0.1.0",
+  "identifier": "text-rs",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "text-rs",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 600,
+        "minHeight": 400,
+        "decorations": false,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png"
+    ]
+  }
+}

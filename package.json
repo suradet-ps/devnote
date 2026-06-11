@@ -1,0 +1,39 @@
+{
+  "name": "text-rs",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "codemirror": "^6",
+    "@codemirror/lang-css": "^6",
+    "@codemirror/lang-html": "^6",
+    "@codemirror/lang-javascript": "^6",
+    "@codemirror/lang-json": "^6",
+    "@codemirror/lang-markdown": "^6",
+    "@codemirror/lang-python": "^6",
+    "@codemirror/lang-rust": "^6",
+    "@codemirror/lang-sql": "^6",
+    "@codemirror/lang-xml": "^6",
+    "@codemirror/theme-one-dark": "^6",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-fs": "^2"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3",
+    "@sveltejs/kit": "^2",
+    "@sveltejs/vite-plugin-svelte": "^5",
+    "@tauri-apps/cli": "^2",
+    "svelte": "^5",
+    "svelte-check": "^4",
+    "typescript": "^5",
+    "vite": "^6"
+  }
+}
