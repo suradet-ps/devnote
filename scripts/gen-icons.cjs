@@ -22,7 +22,7 @@ const IS_SILENT = process.argv.includes("--silent");
 const log = (msg) => !IS_SILENT && console.log(msg);
 const error = (msg) => console.error(msg);
 
-const ICON_SVG = `<svg width="240" height="240" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+const ICON_SVG = `<svg width="240" height="240" viewBox="5 5 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M25 45V25H75V45" stroke="#cc785c" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M35 35H65" stroke="#cc785c" stroke-width="4"/>
 
