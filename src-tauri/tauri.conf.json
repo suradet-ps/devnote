@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicholasrice/tauri-settings-schema/main/schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "text-rs",
   "version": "0.1.0",
   "identifier": "text-rs",
