@@ -1,4 +1,4 @@
-use crate::state::recovery::{RecoveryState, RecoveryEntry};
+use crate::state::recovery::{RecoveryEntry, RecoveryState};
 use tauri::Manager;
 
 #[tauri::command]
@@ -53,9 +53,7 @@ pub async fn check_recovery_data(
 }
 
 #[tauri::command]
-pub async fn clear_recovery_data(
-    app: tauri::AppHandle,
-) -> Result<(), String> {
+pub async fn clear_recovery_data(app: tauri::AppHandle) -> Result<(), String> {
     let state = app.state::<RecoveryState>();
     let path = state.dir.join("recovery.json");
 
@@ -72,9 +70,7 @@ pub async fn clear_recovery_data(
 }
 
 #[tauri::command]
-pub async fn get_app_data_dir(
-    app: tauri::AppHandle,
-) -> Result<String, String> {
+pub async fn get_app_data_dir(app: tauri::AppHandle) -> Result<String, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     Ok(dir.to_string_lossy().to_string())
 }

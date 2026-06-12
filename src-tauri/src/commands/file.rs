@@ -1,7 +1,7 @@
+use encoding_rs::Encoding;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri_plugin_dialog::DialogExt;
-use encoding_rs::Encoding;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilePayload {
@@ -107,20 +107,26 @@ pub async fn save_file(path: String, content: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
     let parent = p.parent().ok_or("Invalid file path")?;
     let stem = p.file_stem().ok_or("Invalid file path")?;
-    let ext = p.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
-    let temp_name = format!(".{}~{:x}{}", stem.to_string_lossy(), std::process::id(), ext);
+    let ext = p
+        .extension()
+        .map(|e| format!(".{}", e.to_string_lossy()))
+        .unwrap_or_default();
+    let temp_name = format!(
+        ".{}~{:x}{}",
+        stem.to_string_lossy(),
+        std::process::id(),
+        ext
+    );
     let temp_path = parent.join(&temp_name);
 
     let data = encode_content(&content, "LF");
-    tokio::fs::write(&temp_path, &data)
-        .await
-        .map_err(|e| {
-            if e.kind() == std::io::ErrorKind::PermissionDenied {
-                "Permission denied: the file is read-only. Save a copy instead?".to_string()
-            } else {
-                format!("Failed to save file: {}", e)
-            }
-        })?;
+    tokio::fs::write(&temp_path, &data).await.map_err(|e| {
+        if e.kind() == std::io::ErrorKind::PermissionDenied {
+            "Permission denied: the file is read-only. Save a copy instead?".to_string()
+        } else {
+            format!("Failed to save file: {}", e)
+        }
+    })?;
 
     tokio::fs::rename(&temp_path, &path)
         .await
@@ -148,15 +154,13 @@ pub async fn save_file_as(
             let path_str = path.to_string().to_string();
 
             let data = encode_content(&content, "LF");
-            tokio::fs::write(&path_str, &data)
-                .await
-                .map_err(|e| {
-                    if e.kind() == std::io::ErrorKind::PermissionDenied {
-                        "Permission denied: the file is read-only. Save a copy instead?".to_string()
-                    } else {
-                        format!("Failed to save file: {}", e)
-                    }
-                })?;
+            tokio::fs::write(&path_str, &data).await.map_err(|e| {
+                if e.kind() == std::io::ErrorKind::PermissionDenied {
+                    "Permission denied: the file is read-only. Save a copy instead?".to_string()
+                } else {
+                    format!("Failed to save file: {}", e)
+                }
+            })?;
             Ok(Some(path_str))
         }
         None => Ok(None),
