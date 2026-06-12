@@ -2,10 +2,11 @@ export function formatPath(path: string, maxLen: number = 40): string {
   if (path.length <= maxLen) return path;
   const separator = path.includes('\\') ? '\\' : '/';
   const parts = path.split(separator);
-  if (parts.length <= 2) return path;
+  if (parts.length <= 3) return path;
   const fileName = parts[parts.length - 1];
-  const dir = parts.slice(0, 2).join(separator);
-  return `${dir}${separator}...${separator}${fileName}`;
+  const first = parts[0];
+  const lastDir = parts[parts.length - 2];
+  return `${first}${separator}...${separator}${lastDir}${separator}${fileName}`;
 }
 
 export function getFileName(path: string): string {

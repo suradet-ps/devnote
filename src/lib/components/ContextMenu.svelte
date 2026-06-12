@@ -10,7 +10,7 @@
 
 {#if show}
   <div class="context-overlay" onclick={onClose} onkeydown={(e) => e.key === 'Escape' && onClose()} role="button" tabindex="-1">
-    <div class="context-menu" style="left: {x}px; top: {y}px;" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="menu">
+    <div class="context-menu" style="left: {x}px; top: {y}px;" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="menu" tabindex="-1">
       {#each items as item}
         <button class="context-item" role="menuitem" onclick={() => { item.action(); onClose(); }}>
           {item.label}

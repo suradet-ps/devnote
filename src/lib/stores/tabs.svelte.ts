@@ -70,7 +70,7 @@ export const tabsStore = {
       fileName: payload.file_name,
       content: payload.content,
       savedContent: payload.content,
-      language: detectLangFromPath(payload.path),
+      language: detectLanguage(payload.path),
       encoding: payload.encoding ?? 'UTF-8',
       lineEnding: payload.line_ending ?? 'LF',
       cursorLine: 1,
@@ -143,7 +143,7 @@ export const tabsStore = {
         savedContent: t.content,
         path,
         fileName: path.split('/').pop() || path.split('\\').pop() || t.fileName,
-        language: detectLangFromPath(path),
+        language: detectLanguage(path),
       } : t);
     }
   },
@@ -154,6 +154,10 @@ export const tabsStore = {
 
   updateCursor(id: string, line: number, col: number) {
     _tabs = _tabs.map(t => t.id === id ? { ...t, cursorLine: line, cursorCol: col } : t);
+  },
+
+  setLanguage(id: string, language: string) {
+    _tabs = _tabs.map(t => t.id === id ? { ...t, language } : t);
   },
 
   updateScrollTop(id: string, scrollTop: number) {
@@ -176,28 +180,11 @@ export const tabsStore = {
   },
 
   closeAll() {
+    if (this.hasDirtyTabs()) return;
     _tabs = [];
     _activeTabId = null;
   }
 };
 
-function detectLangFromPath(path: string | null): string {
-  if (!path) return 'text';
-  const ext = path.split('.').pop()?.toLowerCase() ?? '';
-  const extMap: Record<string, string> = {
-    rs: 'rust', ts: 'typescript', tsx: 'typescript',
-    js: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
-    py: 'python', pyw: 'python', html: 'html', htm: 'html',
-    css: 'css', scss: 'css', less: 'css',
-    md: 'markdown', markdown: 'markdown',
-    json: 'json', jsonc: 'json', sql: 'sql', graphql: 'sql',
-    xml: 'xml', svg: 'xml', vue: 'vue', svelte: 'javascript',
-    cpp: 'cpp', cc: 'cpp', c: 'cpp', h: 'cpp', hpp: 'cpp',
-    java: 'java', php: 'php', go: 'go', rb: 'ruby',
-    toml: 'toml', yaml: 'yaml', yml: 'yaml',
-    sh: 'bash', bash: 'bash', zsh: 'bash', fish: 'bash',
-    txt: 'text', log: 'text', csv: 'text', ini: 'text', cfg: 'text', conf: 'text',
-    env: 'text', rst: 'text',
-  };
-  return extMap[ext] ?? 'text';
-}
+import { detectLanguage } from '$lib/utils/detect-lang';
+

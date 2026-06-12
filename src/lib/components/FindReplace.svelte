@@ -47,13 +47,20 @@
     }
   }
 
+  let focusTimer: ReturnType<typeof setTimeout> | null = null;
+
   $effect(() => {
     if (show) {
-      setTimeout(() => {
+      focusTimer = setTimeout(() => {
         const input = document.querySelector('.find-input') as HTMLInputElement;
         input?.focus();
         input?.select();
       }, 50);
+    } else {
+      if (focusTimer) {
+        clearTimeout(focusTimer);
+        focusTimer = null;
+      }
     }
   });
 </script>

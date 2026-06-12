@@ -68,7 +68,7 @@
   function handleLangSelect(key: string) {
     const tab = tabsStore.activeTab;
     if (tab) {
-      // Update the tab language - need a method for this
+      tabsStore.setLanguage(tab.id, key);
       showLangPicker = false;
     }
   }

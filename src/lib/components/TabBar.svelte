@@ -48,7 +48,10 @@
 
   function closeOtherTabs() {
     tabsStore.tabs.forEach(t => {
-      if (t.id !== contextMenuTabId && t.content === t.savedContent) {
+      if (t.id === contextMenuTabId) return;
+      if (t.content !== t.savedContent) {
+        window.dispatchEvent(new CustomEvent('tab-close-request', { detail: { tabId: t.id } }));
+      } else {
         tabsStore.forceCloseTab(t.id);
       }
     });
@@ -57,7 +60,9 @@
 
   function closeAllTabs() {
     tabsStore.tabs.forEach(t => {
-      if (t.content === t.savedContent) {
+      if (t.content !== t.savedContent) {
+        window.dispatchEvent(new CustomEvent('tab-close-request', { detail: { tabId: t.id } }));
+      } else {
         tabsStore.forceCloseTab(t.id);
       }
     });

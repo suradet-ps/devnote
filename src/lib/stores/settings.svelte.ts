@@ -55,6 +55,9 @@ async function persistSettings() {
   } catch {}
 }
 
+let _mediaQueryHandler: ((e: MediaQueryListEvent) => void) | null = null;
+let _themeVersion = $state(0);
+
 export const settingsStore = {
   get settings() { return _settings; },
   get theme() { return _settings.theme; },
@@ -65,10 +68,10 @@ export const settingsStore = {
   get tabSize() { return _settings.tabSize; },
   get insertSpaces() { return _settings.insertSpaces; },
   get initialized() { return _initialized; },
+  get themeVersion() { return _themeVersion; },
 
   async init() {
     await initStore();
-    // Apply system theme if needed
     this.applySystemTheme();
   },
 
@@ -85,24 +88,31 @@ export const settingsStore = {
   applySystemTheme() {
     if (typeof window !== 'undefined') {
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      document.documentElement.setAttribute('data-theme', _settings.theme);
+
+      if (_mediaQueryHandler) {
+        mq.removeEventListener('change', _mediaQueryHandler);
+      }
+
       const handler = () => {
         if (_settings.theme === 'system') {
           document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
+          _themeVersion++;
         }
       };
+      _mediaQueryHandler = handler;
       mq.addEventListener('change', handler);
-      handler();
+
+      document.documentElement.setAttribute('data-theme', _settings.theme);
+      if (_settings.theme === 'system') {
+        document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
+      }
     }
   },
 
   update(partial: Partial<Settings>) {
     _settings = { ..._settings, ...partial };
-    document.documentElement.setAttribute('data-theme', _settings.theme);
-    if (_settings.theme === 'system' && typeof window !== 'undefined') {
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
-    }
+    _themeVersion++;
+    this.applySystemTheme();
     persistSettings();
   },
 

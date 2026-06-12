@@ -127,7 +127,12 @@
     }
 
     try {
-      await invoke('save_file', { path: tab.path, content: tab.content });
+      await invoke('save_file', {
+        path: tab.path,
+        content: tab.content,
+        lineEnding: tab.lineEnding,
+        encoding: tab.encoding,
+      });
       tabsStore.markSaved(tab.id, tab.path);
       updateWindowTitle();
     } catch (e: any) {
@@ -135,7 +140,7 @@
       if (err.includes('Permission denied') || err.includes('read-only')) {
         const result = await showConfirmDialog(
           'Cannot Save',
-          `Cannot save "${tab.fileName}" — the file is read-only. Save a copy instead?`,
+          `Cannot save "${tab.fileName}" \u2014 the file is read-only. Save a copy instead?`,
           { showDiscard: false, saveLabel: 'Save Copy' },
         );
         if (result === 'save') {
@@ -155,6 +160,8 @@
       const newPath = await invoke<string | null>('save_file_as', {
         content: tab.content,
         suggestedName: tab.fileName,
+        lineEnding: tab.lineEnding,
+        encoding: tab.encoding,
       });
       if (newPath) {
         tabsStore.markSaved(tab.id, newPath);
@@ -191,20 +198,31 @@
     invoke('set_window_title', { title }).catch(() => {});
   }
 
-  // Update title when tab/file changes
+  let lastTitleDirty = $state(false);
+
   $effect(() => {
     const tab = tabsStore.activeTab;
-    if (tab) {
+    if (!tab) {
+      invoke('set_window_title', { title: 'text-rs' }).catch(() => {});
+      lastTitleDirty = false;
+      return;
+    }
+    const dirty = tab.content !== tab.savedContent;
+    if (dirty !== lastTitleDirty) {
+      lastTitleDirty = dirty;
       updateWindowTitle();
     }
-    // Track content changes
-    void tab?.content;
   });
 
   async function handleTabCloseRequest(e: CustomEvent) {
     const tabId = e.detail.tabId;
     const tab = tabsStore.tabs.find(t => t.id === tabId);
     if (!tab) return;
+
+    if (tab.content === tab.savedContent) {
+      tabsStore.forceCloseTab(tabId);
+      return;
+    }
 
     const result = await showConfirmDialog(
       'Save changes?',
@@ -214,7 +232,12 @@
     if (result === 'save') {
       if (tab.path) {
         try {
-          await invoke('save_file', { path: tab.path, content: tab.content });
+          await invoke('save_file', {
+            path: tab.path,
+            content: tab.content,
+            lineEnding: tab.lineEnding,
+            encoding: tab.encoding,
+          });
           tabsStore.markSaved(tab.id, tab.path);
           tabsStore.forceCloseTab(tabId);
         } catch (e: any) {
@@ -229,11 +252,10 @@
     }
   }
 
-  async function handleCloseRequest() {
+  async function handleCloseRequest(): Promise<boolean> {
     const dirtyTabs = tabsStore.getDirtyTabs();
     if (dirtyTabs.length === 0) {
-      getAppWindow().close();
-      return;
+      return true;
     }
 
     const result = await showConfirmDialog(
@@ -246,7 +268,12 @@
       for (const tab of dirtyTabs) {
         if (tab.path) {
           try {
-            await invoke('save_file', { path: tab.path, content: tab.content });
+            await invoke('save_file', {
+              path: tab.path,
+              content: tab.content,
+              lineEnding: tab.lineEnding,
+              encoding: tab.encoding,
+            });
             tabsStore.markSaved(tab.id, tab.path);
           } catch (e) {
             console.error('Failed to save:', e);
@@ -254,9 +281,12 @@
         }
       }
       getAppWindow().close();
+      return false;
     } else if (result === 'discard') {
       getAppWindow().close();
+      return false;
     }
+    return false;
   }
 
   function handleGoToLine() {
@@ -355,24 +385,6 @@
     }
   }
 
-  // Handle file drop
-  async function handleFileDrop(e: DragEvent) {
-    e.preventDefault();
-    const files = e.dataTransfer?.files;
-    if (!files) return;
-
-    for (const file of Array.from(files)) {
-      try {
-        // In Tauri, File objects have a 'path' property
-        const filePath = (file as any).path ?? file.name;
-        await handleOpenFromPath(filePath);
-      } catch (err) {
-        console.error('Failed to open dropped file:', err);
-      }
-    }
-  }
-
-  // Auto-save recovery data every 30 seconds
   let recoveryInterval: ReturnType<typeof setInterval> | null = null;
 
   async function saveRecovery() {
@@ -424,70 +436,79 @@
         tabsStore.newTab();
       }
 
-      // Check for recovery data on startup
       await checkRecovery();
 
       updateWindowTitle();
     };
     init();
 
-    // Start recovery auto-save interval
-    recoveryInterval = setInterval(() => saveRecovery(), 30000);
+    // Start recovery auto-save interval with immediate first save
+    saveRecovery();
+    recoveryInterval = setInterval(() => saveRecovery(), 15000);
+
+    // Window close interception (Cmd+Q, Alt+F4, close button)
+    const closeUnlistenPromise = getAppWindow().onCloseRequested(async (event) => {
+      const dirtyTabs = tabsStore.getDirtyTabs();
+      if (dirtyTabs.length > 0) {
+        event.preventDefault();
+        await handleCloseRequest();
+      }
+    });
 
     window.addEventListener('keydown', handleGlobalKeydown);
     window.addEventListener('tab-close-request', handleTabCloseRequest as unknown as EventListener);
-    window.addEventListener('window-close-request', handleCloseRequest);
-    window.addEventListener('menu-new-tab', () => tabsStore.newTab());
-    window.addEventListener('menu-open-file', () => handleOpenFile());
-    window.addEventListener('menu-save', () => handleSave());
-    window.addEventListener('menu-save-as', () => handleSaveAs());
-    window.addEventListener('menu-close-tab', () => {
-      const tab = tabsStore.activeTab;
-      if (tab) {
-        if (tab.content !== tab.savedContent) {
-          handleTabCloseRequest({ detail: { tabId: tab.id } } as CustomEvent);
-        } else {
-          tabsStore.forceCloseTab(tab.id);
+    const windowCloseHandler: EventListener = () => { handleCloseRequest(); };
+    window.addEventListener('window-close-request', windowCloseHandler);
+
+    // All menu event handlers (stored for cleanup)
+    const menuHandlers: Array<{ event: string; handler: EventListener }> = [
+      { event: 'menu-new-tab', handler: () => tabsStore.newTab() },
+      { event: 'menu-open-file', handler: () => { handleOpenFile(); } },
+      { event: 'menu-save', handler: () => { handleSave(); } },
+      { event: 'menu-save-as', handler: () => { handleSaveAs(); } },
+      {
+        event: 'menu-close-tab', handler: () => {
+          const tab = tabsStore.activeTab;
+          if (tab) {
+            if (tab.content !== tab.savedContent) {
+              handleTabCloseRequest({ detail: { tabId: tab.id } } as CustomEvent);
+            } else {
+              tabsStore.forceCloseTab(tab.id);
+            }
+          }
         }
-      }
-    });
-    window.addEventListener('menu-undo', () => {
-      window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'undo' } }));
-    });
-    window.addEventListener('menu-redo', () => {
-      window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'redo' } }));
-    });
-    window.addEventListener('menu-cut', () => {
-      window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'cut' } }));
-    });
-    window.addEventListener('menu-copy', () => {
-      window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'copy' } }));
-    });
-    window.addEventListener('menu-paste', () => {
-      window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'paste' } }));
-    });
-    window.addEventListener('menu-select-all', () => {
-      window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'select-all' } }));
-    });
-    window.addEventListener('menu-find', () => { showFindReplace = true; });
-    window.addEventListener('menu-find-replace', () => { showFindReplace = true; });
-    window.addEventListener('menu-go-to-line', () => { showGoToLine = true; });
-    window.addEventListener('menu-zoom-in', () => settingsStore.increaseFontSize());
-    window.addEventListener('menu-zoom-out', () => settingsStore.decreaseFontSize());
-    window.addEventListener('menu-zoom-reset', () => settingsStore.resetFontSize());
-    window.addEventListener('menu-word-wrap', () => settingsStore.toggleWordWrap());
-    window.addEventListener('menu-status-bar', () => settingsStore.toggleStatusBar());
-    window.addEventListener('menu-open-recent', (e) => {
+      },
+      { event: 'menu-undo', handler: () => window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'undo' } })) },
+      { event: 'menu-redo', handler: () => window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'redo' } })) },
+      { event: 'menu-cut', handler: () => window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'cut' } })) },
+      { event: 'menu-copy', handler: () => window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'copy' } })) },
+      { event: 'menu-paste', handler: () => window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'paste' } })) },
+      { event: 'menu-select-all', handler: () => window.dispatchEvent(new CustomEvent('editor-action', { detail: { action: 'select-all' } })) },
+      { event: 'menu-find', handler: () => { showFindReplace = true; } },
+      { event: 'menu-find-replace', handler: () => { showFindReplace = true; } },
+      { event: 'menu-go-to-line', handler: () => { showGoToLine = true; } },
+      { event: 'menu-zoom-in', handler: () => settingsStore.increaseFontSize() },
+      { event: 'menu-zoom-out', handler: () => settingsStore.decreaseFontSize() },
+      { event: 'menu-zoom-reset', handler: () => settingsStore.resetFontSize() },
+      { event: 'menu-word-wrap', handler: () => settingsStore.toggleWordWrap() },
+      { event: 'menu-status-bar', handler: () => settingsStore.toggleStatusBar() },
+    ];
+
+    const menuOpenRecentHandler: EventListener = (e) => {
       const path = (e as CustomEvent<string>).detail;
       handleOpenRecent(path);
-    });
-    window.addEventListener('menu-about', () => {
+    };
+    const menuAboutHandler: EventListener = () => {
       showConfirmDialog(
         'About text-rs',
         'text-rs v0.2.0\nA fast, lightweight text editor.\nBuilt with Tauri, Svelte 5, and CodeMirror 6.',
         { showDiscard: false, showCancel: false, saveLabel: 'OK' },
       ).then(() => {});
-    });
+    };
+
+    menuHandlers.forEach(({ event, handler }) => window.addEventListener(event, handler));
+    window.addEventListener('menu-open-recent', menuOpenRecentHandler);
+    window.addEventListener('menu-about', menuAboutHandler);
 
     // File opened from OS (double-click or argv)
     const unlistenFileOpened = getAppWindow().listen<string[]>('file-opened', async (event) => {
@@ -509,15 +530,18 @@
       if (recoveryInterval) clearInterval(recoveryInterval);
       window.removeEventListener('keydown', handleGlobalKeydown);
       window.removeEventListener('tab-close-request', handleTabCloseRequest as unknown as EventListener);
-      window.removeEventListener('window-close-request', handleCloseRequest);
+      window.removeEventListener('window-close-request', windowCloseHandler);
+      menuHandlers.forEach(({ event, handler }) => window.removeEventListener(event, handler));
+      window.removeEventListener('menu-open-recent', menuOpenRecentHandler);
+      window.removeEventListener('menu-about', menuAboutHandler);
       unlistenFileOpened.then(fn => fn());
       unlistenDragDrop.then(fn => fn());
+      closeUnlistenPromise.then(fn => fn());
     };
   });
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="app" ondragover={(e) => e.preventDefault()} ondrop={handleFileDrop}>
+<div class="app">
   <TabBar />
   <div class="editor-area">
     {#if tabsStore.activeTab}
@@ -558,8 +582,7 @@
   <StatusBar />
 
   {#if showRecentDialog}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="toast-backdrop" onclick={() => showRecentDialog = false} onkeydown={() => {}}>
+    <div class="toast-backdrop" onclick={() => showRecentDialog = false} onkeydown={() => {}} role="presentation">
       <div class="recent-dialog" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog" tabindex="-1">
         <h3>Open Recent</h3>
         {#if recentStore.recentFiles.length === 0}

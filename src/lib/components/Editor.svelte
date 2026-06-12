@@ -20,7 +20,7 @@
   let editorEl: HTMLDivElement;
   let view: EditorView | null = null;
   let lastTabId = '';
-  let suppressNextUpdate = false;
+  let suppressNextUpdate = $state(false);
 
   function getTheme(): 'light' | 'dark' {
     return settingsStore.getEffectiveTheme();
@@ -113,6 +113,14 @@
     }
   });
 
+  // Handle language changes (from StatusBar picker) within the same tab
+  $effect(() => {
+    void language;
+    if (view && tabId === lastTabId && lastTabId !== '') {
+      createEditor(view.state.doc.toString(), language);
+    }
+  });
+
   // Handle content prop changes from outside (e.g., tab switch restore)
   $effect(() => {
     if (view && content !== view.state.doc.toString()) {
@@ -124,8 +132,9 @@
     }
   });
 
-  // Handle font size changes
+  // Handle font size, word wrap, and theme changes
   $effect(() => {
+    void settingsStore.themeVersion;
     const size = settingsStore.fontSize;
     const wrap = settingsStore.wordWrap;
     const theme = getTheme();
@@ -139,12 +148,12 @@
     lastTabId = tabId;
 
     // Listen for editor actions
-    window.addEventListener('editor-action', handleEditorAction as EventListener);
+    window.addEventListener('editor-action', handleEditorAction);
   });
 
   onDestroy(() => {
     destroyEditor();
-    window.removeEventListener('editor-action', handleEditorAction as EventListener);
+    window.removeEventListener('editor-action', handleEditorAction);
   });
 </script>
 
