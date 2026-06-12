@@ -2,9 +2,24 @@ mod commands;
 mod state;
 
 use state::recent::RecentFilesState;
+use state::recovery::RecoveryState;
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri::menu::{MenuBuilder, SubmenuBuilder, MenuItemBuilder, CheckMenuItemBuilder};
+
+fn init_logging(app_data_dir: &std::path::Path) {
+    let log_dir = app_data_dir.join("logs");
+    let _ = std::fs::create_dir_all(&log_dir);
+    let log_file = log_dir.join("text-rs.log");
+
+    let _ = simplelog::CombinedLogger::init(vec![
+        simplelog::WriteLogger::new(
+            simplelog::LevelFilter::Info,
+            simplelog::Config::default(),
+            std::fs::File::create(&log_file).unwrap_or(std::fs::File::create("/dev/null").unwrap()),
+        ),
+    ]);
+}
 
 fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
     let open_recent = SubmenuBuilder::new(app, "Open Recent")
@@ -135,34 +150,55 @@ pub fn run() {
             commands::file::remove_recent_file,
             commands::file::check_file_size,
             commands::window::set_window_title,
+            commands::recovery::save_recovery_data,
+            commands::recovery::check_recovery_data,
+            commands::recovery::clear_recovery_data,
+            commands::recovery::get_app_data_dir,
         ])
         .setup(|app| {
+            // Initialize logging
+            if let Ok(dir) = app.path().app_data_dir() {
+                init_logging(&dir);
+
+                // Initialize recovery state
+                let recovery_dir = dir.join("recovery");
+                app.manage(RecoveryState::new(recovery_dir));
+            }
+
             let menu = build_menu(&app.handle());
             if let Some(window) = app.get_webview_window("main") {
                 window.set_menu(menu).ok();
             }
+
+            log::info!("text-rs started");
+
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
     app.run(|app_handle, event| {
-        if let tauri::RunEvent::MenuEvent(ref menu_event) = event {
-            handle_menu_event(app_handle, menu_event.id().as_ref());
-        }
-
-        if let tauri::RunEvent::Opened { urls } = event {
-            if let Some(window) = app_handle.get_webview_window("main") {
-                use tauri::Emitter;
-                let paths: Vec<String> = urls
-                    .iter()
-                    .filter_map(|u| u.to_file_path().ok())
-                    .filter_map(|p| p.to_str().map(String::from))
-                    .collect();
-                if !paths.is_empty() {
-                    window.emit("file-opened", paths).ok();
+        match event {
+            tauri::RunEvent::MenuEvent(ref menu_event) => {
+                handle_menu_event(app_handle, menu_event.id().as_ref());
+            }
+            tauri::RunEvent::Opened { urls } => {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    use tauri::Emitter;
+                    let paths: Vec<String> = urls
+                        .iter()
+                        .filter_map(|u| u.to_file_path().ok())
+                        .filter_map(|p| p.to_str().map(String::from))
+                        .collect();
+                    if !paths.is_empty() {
+                        window.emit("file-opened", paths).ok();
+                    }
                 }
             }
+            tauri::RunEvent::ExitRequested { .. } => {
+                log::info!("text-rs exiting");
+            }
+            _ => {}
         }
     });
 }

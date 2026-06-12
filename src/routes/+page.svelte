@@ -364,6 +364,49 @@
     }
   }
 
+  // Auto-save recovery data every 30 seconds
+  let recoveryInterval: ReturnType<typeof setInterval> | null = null;
+
+  async function saveRecovery() {
+    try {
+      const tabs = tabsStore.tabs.map(t => ({
+        file_name: t.fileName,
+        content: t.content,
+        path: t.path,
+        saved_at: new Date().toISOString(),
+      }));
+      await invoke('save_recovery_data', { tabs });
+    } catch {
+      // Silent - recovery save is best-effort
+    }
+  }
+
+  async function checkRecovery() {
+    try {
+      const entries = await invoke<Array<{ file_name: string; content: string; path: string | null }> | null>('check_recovery_data');
+      if (entries && entries.length > 0) {
+        const names = entries.map(e => e.file_name).join(', ');
+        const result = await showConfirmDialog(
+          'Session Recovery',
+          `Found unsaved files from previous session: ${names}. Restore them?`,
+          { showDiscard: true, showCancel: true, saveLabel: 'Restore' },
+        );
+        if (result === 'save') {
+          for (const entry of entries) {
+            tabsStore.openTab({
+              path: entry.path ?? '',
+              content: entry.content,
+              file_name: entry.file_name,
+            });
+          }
+        }
+        await invoke('clear_recovery_data');
+      }
+    } catch {
+      // Silent - recovery check is best-effort
+    }
+  }
+
   onMount(() => {
     const init = async () => {
       await settingsStore.init();
@@ -373,9 +416,15 @@
         tabsStore.newTab();
       }
 
+      // Check for recovery data on startup
+      await checkRecovery();
+
       updateWindowTitle();
     };
     init();
+
+    // Start recovery auto-save interval
+    recoveryInterval = setInterval(() => saveRecovery(), 30000);
 
     window.addEventListener('keydown', handleGlobalKeydown);
     window.addEventListener('tab-close-request', handleTabCloseRequest as unknown as EventListener);
@@ -449,6 +498,7 @@
     });
 
     return () => {
+      if (recoveryInterval) clearInterval(recoveryInterval);
       window.removeEventListener('keydown', handleGlobalKeydown);
       window.removeEventListener('tab-close-request', handleTabCloseRequest as unknown as EventListener);
       window.removeEventListener('window-close-request', handleCloseRequest);
