@@ -329,9 +329,22 @@ pub fn run() {
         tauri::RunEvent::MenuEvent(ref menu_event) => {
             handle_menu_event(app_handle, menu_event.id().as_ref());
         }
-        tauri::RunEvent::ExitRequested { api, .. } => {
-            log::info!("text-rs exit requested — deferring to frontend");
-            api.prevent_exit();
+        tauri::RunEvent::Opened { urls, .. } => {
+            use tauri::Emitter;
+            if let Some(window) = app_handle.get_webview_window("main") {
+                let paths: Vec<String> = urls
+                    .iter()
+                    .filter_map(|url| url.to_file_path().ok())
+                    .map(|p| p.to_string_lossy().to_string())
+                    .collect();
+                if !paths.is_empty() {
+                    log::info!("Files opened via OS: {:?}", paths);
+                    window.emit("file-opened", paths).ok();
+                }
+            }
+        }
+        tauri::RunEvent::ExitRequested { .. } => {
+            log::info!("text-rs exiting");
         }
         _ => {}
     });
