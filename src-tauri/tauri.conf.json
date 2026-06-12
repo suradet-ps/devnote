@@ -48,212 +48,32 @@
     ],
     "fileAssociations": [
       {
-        "name": "Plain Text",
-        "ext": ["txt", "log", "csv", "tsv", "ini", "cfg", "conf", "env", "rst"],
-        "mimeType": "text/plain",
+        "name": "Text Document",
+        "ext": ["txt", "log", "csv", "tsv", "ini", "cfg", "conf", "env", "rst", "md", "markdown", "mdown", "mkd"],
         "role": "Editor",
-        "rank": "Default"
+        "rank": "Alternate"
       },
       {
-        "name": "Markdown",
-        "ext": ["md", "markdown", "mdown", "mkd"],
-        "mimeType": "text/markdown",
+        "name": "Source Code",
+        "ext": ["rs", "ts", "tsx", "js", "jsx", "mjs", "cjs", "py", "pyw", "go", "rb", "java", "c", "cpp", "cc", "h", "hpp", "php", "sh", "bash", "zsh", "fish"],
         "role": "Editor",
-        "rank": "Default"
+        "rank": "Alternate"
       },
       {
-        "name": "Rust Source",
-        "ext": ["rs"],
-        "mimeType": "text/plain",
+        "name": "Web Document",
+        "ext": ["html", "htm", "css", "scss", "less", "svelte", "vue", "svg", "xml", "json", "jsonc"],
         "role": "Editor",
-        "rank": "Default"
+        "rank": "Alternate"
       },
       {
-        "name": "TOML",
-        "ext": ["toml"],
-        "mimeType": "application/toml",
+        "name": "Config File",
+        "ext": ["toml", "yaml", "yml", "sql", "graphql", "gql", "gitignore", "editorconfig", "dockerfile"],
         "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "TypeScript Source",
-        "ext": ["ts"],
-        "mimeType": "application/typescript",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "TypeScript JSX",
-        "ext": ["tsx"],
-        "mimeType": "application/typescript",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "JavaScript Source",
-        "ext": ["js", "jsx", "mjs", "cjs"],
-        "mimeType": "application/javascript",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "Python Source",
-        "ext": ["py", "pyw"],
-        "mimeType": "text/x-python",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "HTML",
-        "ext": ["html", "htm"],
-        "mimeType": "text/html",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "Svelte",
-        "ext": ["svelte"],
-        "mimeType": "text/plain",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "Vue",
-        "ext": ["vue"],
-        "mimeType": "text/plain",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "CSS",
-        "ext": ["css"],
-        "mimeType": "text/css",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "SCSS",
-        "ext": ["scss"],
-        "mimeType": "text/x-scss",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "LESS",
-        "ext": ["less"],
-        "mimeType": "text/x-less",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "JSON",
-        "ext": ["json", "jsonc"],
-        "mimeType": "application/json",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "YAML",
-        "ext": ["yaml", "yml"],
-        "mimeType": "application/x-yaml",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "XML",
-        "ext": ["xml"],
-        "mimeType": "application/xml",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "SVG",
-        "ext": ["svg"],
-        "mimeType": "image/svg+xml",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "SQL",
-        "ext": ["sql"],
-        "mimeType": "application/sql",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "GraphQL",
-        "ext": ["graphql", "gql"],
-        "mimeType": "application/graphql",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "Shell Script",
-        "ext": ["sh", "bash", "zsh", "fish"],
-        "mimeType": "text/x-shellscript",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "Go Source",
-        "ext": ["go"],
-        "mimeType": "text/x-go",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "Ruby Source",
-        "ext": ["rb"],
-        "mimeType": "application/x-ruby",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "C Source",
-        "ext": ["c"],
-        "mimeType": "text/x-c",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "C++ Source",
-        "ext": ["cpp", "cc", "cxx"],
-        "mimeType": "text/x-c++",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "C Header",
-        "ext": ["h", "hpp"],
-        "mimeType": "text/x-c-header",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "Java Source",
-        "ext": ["java"],
-        "mimeType": "text/x-java-source",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "PHP Source",
-        "ext": ["php"],
-        "mimeType": "text/x-php",
-        "role": "Editor",
-        "rank": "Default"
-      },
-      {
-        "name": "Dockerfile",
-        "ext": ["dockerfile"],
-        "mimeType": "text/plain",
-        "role": "Editor",
-        "rank": "Default"
+        "rank": "Alternate"
       }
     ],
     "macOS": {
-      "minimumSystemVersion": "11.0",
-      "infoPlist": "Info.plist"
+      "minimumSystemVersion": "11.0"
     },
     "windows": {
       "nsis": {
