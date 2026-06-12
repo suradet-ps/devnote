@@ -62,7 +62,10 @@ pub async fn open_file(app: tauri::AppHandle) -> Result<Option<FilePayload>, Str
 
     match file_path {
         Some(path) => {
-            let path_str = path.to_string().to_string();
+            let path_buf = path
+                .into_path()
+                .map_err(|e| format!("Invalid file path: {:?}", e))?;
+            let path_str = path_buf.to_string_lossy().to_string();
             read_file_internal(&path_str).await.map(Some)
         }
         None => Ok(None),
@@ -151,7 +154,10 @@ pub async fn save_file_as(
 
     match file_path {
         Some(path) => {
-            let path_str = path.to_string().to_string();
+            let path_buf = path
+                .into_path()
+                .map_err(|e| format!("Invalid file path: {:?}", e))?;
+            let path_str = path_buf.to_string_lossy().to_string();
 
             let data = encode_content(&content, "LF");
             tokio::fs::write(&path_str, &data).await.map_err(|e| {
