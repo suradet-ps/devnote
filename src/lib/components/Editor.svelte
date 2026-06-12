@@ -3,7 +3,7 @@
   import { EditorView } from '@codemirror/view';
   import { EditorState } from '@codemirror/state';
   import { undo, redo, selectAll } from '@codemirror/commands';
-  import { search, openSearchPanel, closeSearchPanel, getSearchQuery, setSearchQuery } from '@codemirror/search';
+  import { openSearchPanel } from '@codemirror/search';
   import { createEditorState, reconfigureView } from '$lib/codemirror/setup';
   import { settingsStore } from '$lib/stores/settings.svelte';
 

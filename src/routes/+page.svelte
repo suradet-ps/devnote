@@ -270,6 +270,14 @@
     goToLineValue = '';
   }
 
+  $effect(() => {
+    if (showGoToLine) {
+      setTimeout(() => {
+        document.querySelector<HTMLInputElement>('.goto-line-input')?.focus();
+      }, 50);
+    }
+  });
+
   function handleGlobalKeydown(e: KeyboardEvent) {
     const mod = e.metaKey || e.ctrlKey;
 
@@ -508,6 +516,7 @@
   });
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="app" ondragover={(e) => e.preventDefault()} ondrop={handleFileDrop}>
   <TabBar />
   <div class="editor-area">
@@ -528,7 +537,6 @@
               if (e.key === 'Enter') handleGoToLine();
               if (e.key === 'Escape') { showGoToLine = false; goToLineValue = ''; }
             }}
-            autofocus
           />
           <button class="goto-line-btn" onclick={handleGoToLine}>Go</button>
         </div>
@@ -552,7 +560,7 @@
   {#if showRecentDialog}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="toast-backdrop" onclick={() => showRecentDialog = false} onkeydown={() => {}}>
-      <div class="recent-dialog" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog">
+      <div class="recent-dialog" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog" tabindex="-1">
         <h3>Open Recent</h3>
         {#if recentStore.recentFiles.length === 0}
           <p class="recent-empty">No recent files</p>

@@ -29,7 +29,7 @@
     onCancel,
   }: Props = $props();
 
-  let dialogEl: HTMLDivElement;
+  let dialogEl: HTMLDivElement = $state()!;
 
   $effect(() => {
     if (open) {
@@ -52,6 +52,7 @@
       class="dialog"
       bind:this={dialogEl}
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
       role="alertdialog"
       aria-labelledby="dialog-title"
       aria-describedby="dialog-message"
@@ -61,7 +62,7 @@
       <p id="dialog-message" class="dialog-message">{message}</p>
       <div class="dialog-actions">
         {#if showSave}
-          <button class="dialog-btn dialog-btn-save" onclick={onSave} autofocus>{saveLabel}</button>
+          <button class="dialog-btn dialog-btn-save" onclick={onSave}>{saveLabel}</button>
         {/if}
         {#if showDiscard}
           <button class="dialog-btn dialog-btn-discard" onclick={onDiscard}>{discardLabel}</button>
