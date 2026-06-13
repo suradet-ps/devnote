@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { EditorView } from '@codemirror/view';
-  import { EditorState } from '@codemirror/state';
   import { undo, redo, selectAll } from '@codemirror/commands';
   import { openSearchPanel } from '@codemirror/search';
-  import { createEditorState, reconfigureView } from '$lib/codemirror/setup';
+  import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
+  import { createEditorState, reconfigureView, reconfigureLanguage } from '$lib/codemirror/setup';
+  import { onEditorAction, type EditorAction } from '$lib/editor/actions';
   import { settingsStore } from '$lib/stores/settings.svelte';
 
   interface Props {
@@ -17,16 +18,21 @@
 
   let { tabId, content, language, onContentChange, onCursorUpdate }: Props = $props();
 
-  let editorEl: HTMLDivElement;
+  let editorEl: HTMLDivElement | undefined = $state();
   let view: EditorView | null = null;
-  let lastTabId = '';
+  let lastTabId: string | null = null;
   let suppressNextUpdate = false;
+  let pendingCursorFrame: number | null = null;
 
   function getTheme(): 'light' | 'dark' {
     return settingsStore.getEffectiveTheme();
   }
 
   function destroyEditor() {
+    if (pendingCursorFrame !== null) {
+      cancelAnimationFrame(pendingCursorFrame);
+      pendingCursorFrame = null;
+    }
     if (view) {
       view.destroy();
       view = null;
@@ -47,57 +53,70 @@
           onContentChange(value);
         }
       },
-      (update) => {
-        const pos = update.state.selection.main.head;
-        const line = update.state.doc.lineAt(pos);
-        onCursorUpdate(line.number, pos - line.from + 1);
+      (view) => {
+        // Coalesce cursor updates to one per frame to avoid StatusBar storms
+        if (pendingCursorFrame !== null) return;
+        pendingCursorFrame = requestAnimationFrame(() => {
+          pendingCursorFrame = null;
+          const pos = view.state.selection.main.head;
+          const line = view.state.doc.lineAt(pos);
+          onCursorUpdate(line.number, pos - line.from + 1);
+        });
       },
     );
 
     view = new EditorView({ state, parent: editorEl });
+    lastTabId = tabId;
     view.focus();
   }
 
-  function handleEditorAction(e: Event) {
+  async function handleEditorAction(action: EditorAction) {
     if (!view) return;
-    const detail = (e as CustomEvent).detail;
-    const action = detail.action;
-
-    switch (action) {
+    switch (action.action) {
       case 'undo':
         undo(view);
         break;
       case 'redo':
         redo(view);
         break;
-      case 'cut':
-        document.execCommand('cut');
+      case 'cut': {
+        const { from, to } = view.state.selection.main;
+        if (from === to) break;
+        const text = view.state.sliceDoc(from, to);
+        try { await writeText(text); } catch (e) { console.error('clipboard write failed', e); return; }
+        view.dispatch({ changes: { from, to } });
         break;
-      case 'copy':
-        document.execCommand('copy');
+      }
+      case 'copy': {
+        const { from, to } = view.state.selection.main;
+        if (from === to) break;
+        const text = view.state.sliceDoc(from, to);
+        try { await writeText(text); } catch (e) { console.error('clipboard write failed', e); }
         break;
-      case 'paste':
-        document.execCommand('paste');
+      }
+      case 'paste': {
+        let text: string;
+        try { text = await readText(); } catch (e) { console.error('clipboard read failed', e); return; }
+        const { from, to } = view.state.selection.main;
+        view.dispatch({ changes: { from, to, insert: text } });
         break;
+      }
       case 'select-all':
         selectAll(view);
         break;
       case 'find':
-        openSearchPanel(view);
-        break;
       case 'find-replace':
         openSearchPanel(view);
         break;
       case 'set-language': {
-        const lang = detail.language;
-        if (lang) {
-          createEditor(view.state.doc.toString(), lang);
+        if (action.language) {
+          reconfigureLanguage(view, action.language);
         }
         break;
       }
       case 'go-to-line': {
-        const line = detail.line;
-        if (line && line > 0) {
+        const line = action.line;
+        if (line > 0) {
           const lineCount = view.state.doc.lines;
           const targetLine = Math.min(Math.max(1, line), lineCount);
           const lineObj = view.state.doc.line(targetLine);
@@ -109,12 +128,14 @@
         }
         break;
       }
+      // search/search-prev/search-next/replace/replace-all are no-ops here;
+      // CodeMirror's built-in search panel handles them once openSearchPanel
+      // is active. FindReplace still dispatches them for future use.
     }
   }
 
   $effect(() => {
-    if (tabId !== lastTabId && view) {
-      lastTabId = tabId;
+    if (view && tabId !== lastTabId) {
       createEditor(content, language);
     }
   });
@@ -125,30 +146,32 @@
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: content },
       });
-      requestAnimationFrame(() => { suppressNextUpdate = false; });
+      requestAnimationFrame(() => {
+        suppressNextUpdate = false;
+      });
     }
   });
 
   $effect(() => {
+    // Read settings for reactivity
     void settingsStore.themeVersion;
     void settingsStore.fontSize;
     void settingsStore.wordWrap;
-    const theme = getTheme();
     if (view) {
-      reconfigureView(view, settingsStore.settings, theme);
+      reconfigureView(view, settingsStore.settings, getTheme());
     }
   });
 
+  let removeActionListener: (() => void) | null = null;
+
   onMount(() => {
     createEditor(content, language);
-    lastTabId = tabId;
-
-    window.addEventListener('editor-action', handleEditorAction);
+    removeActionListener = onEditorAction(handleEditorAction);
   });
 
   onDestroy(() => {
     destroyEditor();
-    window.removeEventListener('editor-action', handleEditorAction);
+    removeActionListener?.();
   });
 </script>
 

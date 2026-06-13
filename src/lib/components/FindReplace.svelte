@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { getCurrentWindow } from '@tauri-apps/api/window';
+  import { tick } from 'svelte';
+  import { dispatchEditorAction } from '$lib/editor/actions';
 
   let { show = false, onClose }: {
     show: boolean;
@@ -12,55 +13,26 @@
   let caseSensitive = $state(false);
   let useRegex = $state(false);
 
-  function emitEditorAction(action: string, detail?: Record<string, unknown>) {
-    if (action === 'find' || action === 'find-replace') {
-      // Use CodeMirror's openSearchPanel
-      window.dispatchEvent(new CustomEvent('editor-action', {
-        detail: { action, ...detail },
-      }));
-    }
-  }
-
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       onClose();
     } else if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent('editor-action', {
-        detail: {
-          action: 'search-next',
-          query,
-          caseSensitive,
-          useRegex,
-        },
-      }));
+      dispatchEditorAction({ action: 'search-next', query, caseSensitive, useRegex });
     } else if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent('editor-action', {
-        detail: {
-          action: 'search-prev',
-          query,
-          caseSensitive,
-          useRegex,
-        },
-      }));
+      dispatchEditorAction({ action: 'search-prev', query, caseSensitive, useRegex });
     }
   }
 
-  let focusTimer: ReturnType<typeof setTimeout> | null = null;
-
   $effect(() => {
     if (show) {
-      focusTimer = setTimeout(() => {
-        const input = document.querySelector('.find-input') as HTMLInputElement;
+      void (async () => {
+        await tick();
+        const input = document.querySelector<HTMLInputElement>('.find-input');
         input?.focus();
         input?.select();
-      }, 50);
-    } else {
-      if (focusTimer) {
-        clearTimeout(focusTimer);
-        focusTimer = null;
-      }
+      })();
     }
   });
 </script>
@@ -76,25 +48,14 @@
         bind:value={query}
         aria-label="Find text"
         oninput={() => {
-          window.dispatchEvent(new CustomEvent('editor-action', {
-            detail: {
-              action: 'search',
-              query,
-              caseSensitive,
-              useRegex,
-            },
-          }));
+          dispatchEditorAction({ action: 'search', query, caseSensitive, useRegex });
         }}
       />
       <button class="find-btn" onclick={() => {
-        window.dispatchEvent(new CustomEvent('editor-action', {
-          detail: { action: 'search-prev', query, caseSensitive, useRegex },
-        }));
+        dispatchEditorAction({ action: 'search-prev', query, caseSensitive, useRegex });
       }} aria-label="Previous match" title="Previous match (Shift+Enter)">↑</button>
       <button class="find-btn" onclick={() => {
-        window.dispatchEvent(new CustomEvent('editor-action', {
-          detail: { action: 'search-next', query, caseSensitive, useRegex },
-        }));
+        dispatchEditorAction({ action: 'search-next', query, caseSensitive, useRegex });
       }} aria-label="Next match" title="Next match (Enter)">↓</button>
       <button class="find-btn" onclick={() => { replaceMode = !replaceMode; }} aria-label="Toggle replace" title="Toggle Replace">
         {replaceMode ? '▼' : '▶'}
@@ -112,27 +73,21 @@
           onkeydown={(e: KeyboardEvent) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              window.dispatchEvent(new CustomEvent('editor-action', {
-                detail: { action: 'replace', query, replacement, caseSensitive, useRegex },
-              }));
+              dispatchEditorAction({ action: 'replace', query, replacement, caseSensitive, useRegex });
             }
           }}
         />
         <button
           class="find-btn find-btn-action"
           onclick={() => {
-            window.dispatchEvent(new CustomEvent('editor-action', {
-              detail: { action: 'replace', query, replacement, caseSensitive, useRegex },
-            }));
+            dispatchEditorAction({ action: 'replace', query, replacement, caseSensitive, useRegex });
           }}
           aria-label="Replace current match"
         >Replace</button>
         <button
           class="find-btn find-btn-action"
           onclick={() => {
-            window.dispatchEvent(new CustomEvent('editor-action', {
-              detail: { action: 'replace-all', query, replacement, caseSensitive, useRegex },
-            }));
+            dispatchEditorAction({ action: 'replace-all', query, replacement, caseSensitive, useRegex });
           }}
           aria-label="Replace all matches"
         >All</button>
