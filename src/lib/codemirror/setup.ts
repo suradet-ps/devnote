@@ -53,6 +53,11 @@ export function createEditorState(
 ): EditorState {
   const langExtension = getLanguage(language);
 
+  // If the language is async-loaded, start with an empty compartment
+  // and let `reconfigureLanguage` apply the resolved extension.
+  const initialLang: Extension =
+    langExtension instanceof Promise ? [] : (langExtension as unknown as Extension);
+
   return EditorState.create({
     doc: content,
     extensions: [
@@ -91,7 +96,7 @@ export function createEditorState(
           '.cm-scroller': { fontFamily: `'${settings.fontFamily}', monospace` },
         }),
       ),
-      langCompartment.of(langExtension as unknown as Extension),
+      langCompartment.of(initialLang),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onChange(update.state.doc.toString());
@@ -125,7 +130,17 @@ export function reconfigureView(
 
 export function reconfigureLanguage(view: EditorView, language: string): void {
   const langExtension = getLanguage(language);
-  view.dispatch({
-    effects: [langCompartment.reconfigure(langExtension as unknown as Extension)],
-  });
+  if (langExtension instanceof Promise) {
+    // Initial empty reconfigure; resolved extension is applied when ready.
+    // (CodeMirror's Compartment reconfigure cannot be called with a Promise.)
+    langExtension.then((resolved) => {
+      view.dispatch({
+        effects: [langCompartment.reconfigure(resolved as unknown as Extension)],
+      });
+    });
+  } else {
+    view.dispatch({
+      effects: [langCompartment.reconfigure(langExtension as unknown as Extension)],
+    });
+  }
 }

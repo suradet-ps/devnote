@@ -47,6 +47,9 @@ jobs:
       - name: SvelteKit sync + svelte-check
         run: bun run check
 
+      - name: Vitest unit tests
+        run: bun run test
+
   # ── Backend: Rust check + clippy + test ───────────────────────────
   backend:
     name: Backend (${{ matrix.os }})

@@ -209,4 +209,14 @@ export const tabsStore = {
   hasDirtyTabs(): boolean {
     return _tabs.some((t) => t.content !== t.savedContent);
   },
+
+  /**
+   * Test-only helper to reset store state. Not part of the public API.
+   * @internal
+   */
+  __resetForTests(): void {
+    _tabs = [];
+    _activeTabId = null;
+    _untitledCounter = 0;
+  },
 };

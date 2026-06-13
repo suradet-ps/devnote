@@ -68,6 +68,8 @@
     view = new EditorView({ state, parent: editorEl });
     lastTabId = tabId;
     view.focus();
+    // If the language pack is async, apply it when it resolves
+    reconfigureLanguage(view, lang);
   }
 
   async function handleEditorAction(action: EditorAction) {

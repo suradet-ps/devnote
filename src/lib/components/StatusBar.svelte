@@ -5,12 +5,33 @@
   let line = $derived(tabsStore.activeTab?.cursorLine ?? 1);
   let col = $derived(tabsStore.activeTab?.cursorCol ?? 1);
   let content = $derived(tabsStore.activeTab?.content ?? '');
-  let wordCount = $derived(content ? content.split(/\s+/).filter(Boolean).length : 0);
   let charCount = $derived(content.length);
   let language = $derived(tabsStore.activeTab?.language ?? 'text');
   let encoding = $derived(tabsStore.activeTab?.encoding ?? 'UTF-8');
   let lineEnding = $derived(tabsStore.activeTab?.lineEnding ?? 'LF');
-  let fileSize = $derived(content ? content.length : 0);
+  let fileSize = $derived(content.length);
+
+  // wordCount is expensive for large files. Defer to idle time and coalesce.
+  let wordCount = $state(0);
+  let pendingIdle: number | null = null;
+  $effect(() => {
+    const c = content;
+    if (pendingIdle !== null) {
+      cancelIdleCallback(pendingIdle);
+    }
+    pendingIdle = requestIdleCallback(
+      () => {
+        wordCount = c ? c.split(/\s+/).filter(Boolean).length : 0;
+        pendingIdle = null;
+      },
+      { timeout: 500 },
+    );
+  });
+  $effect(() => {
+    return () => {
+      if (pendingIdle !== null) cancelIdleCallback(pendingIdle);
+    };
+  });
 
   let showLangPicker = $state(false);
 
