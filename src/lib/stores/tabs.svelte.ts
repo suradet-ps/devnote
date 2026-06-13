@@ -104,6 +104,10 @@ export const tabsStore = {
   openTab(payload: FilePayload): Tab {
     const existing = _tabs.find((t) => t.path === payload.path);
     if (existing) {
+      console.log('[tabsStore] openTab: existing tab, just focusing', {
+        tabId: existing.id,
+        contentLength: existing.content.length,
+      });
       _activeTabId = existing.id;
       return existing;
     }
@@ -130,6 +134,12 @@ export const tabsStore = {
       cursorCol: 1,
       scrollTop: 0,
     };
+    console.log('[tabsStore] openTab: created new tab', {
+      tabId: tab.id,
+      contentLength: tab.content.length,
+      contentPreview: tab.content.slice(0, 80),
+      fileName: tab.fileName,
+    });
     _tabs = [..._tabs, tab];
     _activeTabId = tab.id;
     return tab;

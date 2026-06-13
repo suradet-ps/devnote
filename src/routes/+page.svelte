@@ -34,6 +34,25 @@
   let toastVisible = $state(false);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // The active tab is read by the template (which passes props to <Editor>).
+  // We expose it through a $derived so the Editor always sees consistent,
+  // freshly-evaluated values when props are bound to its fields.
+  const activeTab = $derived(tabsStore.activeTab);
+
+  // Confirm dialog: queue-based to avoid losing concurrent resolvers.
+  // A single shared `confirmResolve` would orphan any in-flight promise
+  // if a second dialog was opened; the queue keeps each resolver paired
+  // with its own dialog lifecycle.
+  type ConfirmResult = 'save' | 'discard' | 'cancel';
+  interface ConfirmRequest {
+    title: string;
+    message: string;
+    showSave: boolean;
+    showDiscard: boolean;
+    showCancel: boolean;
+    saveLabel: string;
+    resolve: (r: ConfirmResult) => void;
+  }
   let confirmOpen = $state(false);
   let confirmTitle = $state('');
   let confirmMessage = $state('');
@@ -41,38 +60,76 @@
   let confirmShowDiscard = $state(true);
   let confirmShowCancel = $state(true);
   let confirmSaveLabel = $state('Save');
-  let confirmResolve: ((value: 'save' | 'discard' | 'cancel') => void) | null = null;
+  let confirmQueue: ConfirmRequest[] = $state([]);
 
   function showConfirmDialog(
     title: string,
     message: string,
     opts?: { saveLabel?: string; showSave?: boolean; showDiscard?: boolean; showCancel?: boolean }
-  ): Promise<'save' | 'discard' | 'cancel'> {
-    return new Promise((resolve) => {
-      confirmTitle = title;
-      confirmMessage = message;
-      confirmShowSave = opts?.showSave ?? true;
-      confirmShowDiscard = opts?.showDiscard ?? true;
-      confirmShowCancel = opts?.showCancel ?? true;
-      confirmSaveLabel = opts?.saveLabel ?? 'Save';
-      confirmOpen = true;
-      confirmResolve = resolve;
+  ): Promise<ConfirmResult> {
+    return new Promise<ConfirmResult>((resolve) => {
+      const req: ConfirmRequest = {
+        title,
+        message,
+        showSave: opts?.showSave ?? true,
+        showDiscard: opts?.showDiscard ?? true,
+        showCancel: opts?.showCancel ?? true,
+        saveLabel: opts?.saveLabel ?? 'Save',
+        resolve,
+      };
+      // If a dialog is already showing, queue this one. The first
+      // dialog's user action will pop the queue and show the next.
+      if (confirmOpen) {
+        confirmQueue = [...confirmQueue, req];
+        return;
+      }
+      presentRequest(req);
     });
   }
 
-  function handleConfirmSave() {
+  function presentRequest(req: ConfirmRequest) {
+    confirmTitle = req.title;
+    confirmMessage = req.message;
+    confirmShowSave = req.showSave;
+    confirmShowDiscard = req.showDiscard;
+    confirmShowCancel = req.showCancel;
+    confirmSaveLabel = req.saveLabel;
+    confirmOpen = true;
+    // Defer attaching the resolver to the NEXT microtask so the
+    // dialog's buttons are mounted (and their onclick handlers wired)
+    // before the user can click them. Without this the very first
+    // click on a freshly-shown dialog can race the prop binding.
+    queueMicrotask(() => {
+      pendingResolve = req.resolve;
+    });
+  }
+
+  let pendingResolve: ((r: ConfirmResult) => void) | null = null;
+
+  function resolveConfirm(result: ConfirmResult) {
+    console.log('[confirm] resolved:', result);
     confirmOpen = false;
-    confirmResolve?.('save');
+    const resolve = pendingResolve;
+    pendingResolve = null;
+    resolve?.(result);
+    // If more dialogs were queued, show the next one on the next tick.
+    if (confirmQueue.length > 0) {
+      const [next, ...rest] = confirmQueue;
+      confirmQueue = rest;
+      queueMicrotask(() => presentRequest(next));
+    }
+  }
+
+  function handleConfirmSave() {
+    resolveConfirm('save');
   }
 
   function handleConfirmDiscard() {
-    confirmOpen = false;
-    confirmResolve?.('discard');
+    resolveConfirm('discard');
   }
 
   function handleConfirmCancel() {
-    confirmOpen = false;
-    confirmResolve?.('cancel');
+    resolveConfirm('cancel');
   }
 
   function showToast(message: string) {
@@ -289,8 +346,11 @@
    * Always decides whether to close. Returns nothing — side effect is `appWindow.close()`.
    */
   async function handleCloseRequest(): Promise<void> {
+    console.log('[close] handleCloseRequest called');
     const dirtyTabs = tabsStore.getDirtyTabs();
+    console.log('[close] dirty tabs:', dirtyTabs.length);
     if (dirtyTabs.length === 0) {
+      console.log('[close] no dirty tabs, closing window');
       getAppWindow().close();
       return;
     }
@@ -300,6 +360,7 @@
       `You have ${dirtyTabs.length} unsaved file(s). Save before closing?`,
       { saveLabel: 'Save All' },
     );
+    console.log('[close] user chose:', result);
 
     if (result === 'cancel') return;
 
@@ -328,6 +389,7 @@
         return;
       }
     }
+    console.log('[close] calling appWindow.close()');
     getAppWindow().close();
   }
 
@@ -682,7 +744,7 @@
 <div class="app">
   <TabBar />
   <div class="editor-area">
-    {#if tabsStore.activeTab}
+    {#if activeTab}
       <FindReplace
         show={showFindReplace}
         onClose={() => showFindReplace = false}
@@ -703,13 +765,15 @@
           <button class="goto-line-btn" onclick={handleGoToLine}>Go</button>
         </div>
       {/if}
-      <Editor
-        tabId={tabsStore.activeTab.id}
-        content={tabsStore.activeTab.content}
-        language={tabsStore.activeTab.language}
-        onContentChange={handleContentChange}
-        onCursorUpdate={handleCursorUpdate}
-      />
+      {#key activeTab?.id ?? 'empty'}
+        <Editor
+          tabId={activeTab?.id ?? ''}
+          content={activeTab?.content ?? ''}
+          language={activeTab?.language ?? 'text'}
+          onContentChange={handleContentChange}
+          onCursorUpdate={handleCursorUpdate}
+        />
+      {/key}
     {:else}
       <div class="empty-state">
         <p>No open files</p>
