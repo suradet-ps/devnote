@@ -305,6 +305,7 @@ pub fn run() {
             commands::file::remove_recent_file,
             commands::file::check_file_size,
             commands::file::get_pending_files,
+            commands::file::frontend_ready,
             commands::window::set_window_title,
             commands::recovery::save_recovery_data,
             commands::recovery::check_recovery_data,
@@ -331,16 +332,21 @@ pub fn run() {
             // Capture file paths passed as command-line args (macOS "Open With" / drag-to-icon)
             {
                 let args: Vec<String> = std::env::args().skip(1).collect();
+                log::info!("[launch] argv (after skip 1): {:?}", args);
                 let file_args: Vec<String> = args
                     .iter()
                     .filter(|a| !a.starts_with('-'))
                     .cloned()
                     .collect();
                 if !file_args.is_empty() {
-                    log::info!("Files from command-line args: {:?}", file_args);
+                    log::info!("[launch] files from argv: {:?}", file_args);
                     if let Ok(mut paths) = pending_arc.lock() {
                         paths.extend(file_args);
                     }
+                } else {
+                    log::info!(
+                        "[launch] no files from argv (macOS file-association uses Apple Event)"
+                    );
                 }
             }
 
@@ -351,6 +357,12 @@ pub fn run() {
                 macos_events::init(pending_arc.clone());
                 macos_events::macos::capture_launch_file(&pending_arc);
                 macos_events::macos::install_handler(pending_arc.clone());
+                if let Ok(paths) = pending_arc.lock() {
+                    log::info!(
+                        "[launch] pending files after Apple Event capture: {:?}",
+                        *paths
+                    );
+                }
             }
 
             let menu = build_menu(app.handle());
@@ -378,21 +390,44 @@ pub fn run() {
         #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
         tauri::RunEvent::Opened { urls, .. } => {
             use tauri::Emitter;
+            log::info!(
+                "[RunEvent::Opened] received {} url(s): {:?}",
+                urls.len(),
+                urls
+            );
             let paths: Vec<String> = urls
                 .iter()
-                .filter_map(|url| url.to_file_path().ok())
+                .filter_map(|url| {
+                    let p = url.to_file_path().ok();
+                    if p.is_none() {
+                        log::warn!(
+                            "[RunEvent::Opened] could not convert url to file path: {}",
+                            url
+                        );
+                    }
+                    p
+                })
                 .map(|p| p.to_string_lossy().to_string())
                 .collect();
             if !paths.is_empty() {
-                log::info!("Files opened via OS: {:?}", paths);
+                log::info!("[RunEvent::Opened] resolved file paths: {:?}", paths);
                 if let Some(pending) = app_handle.try_state::<PendingFilesState>()
                     && let Ok(mut p) = pending.inner.lock()
                 {
                     p.extend(paths.clone());
+                    log::info!(
+                        "[RunEvent::Opened] added to pending list (now {} total)",
+                        p.len()
+                    );
                 }
                 if let Some(window) = app_handle.get_webview_window("main") {
+                    log::info!("[RunEvent::Opened] emitting file-opened event to frontend");
                     window.emit("file-opened", paths).ok();
+                } else {
+                    log::warn!("[RunEvent::Opened] main window not found, event not emitted");
                 }
+            } else {
+                log::warn!("[RunEvent::Opened] no valid file paths from urls");
             }
         }
         tauri::RunEvent::ExitRequested { .. } => {

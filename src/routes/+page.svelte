@@ -565,6 +565,37 @@
       void handleCloseRequest();
     });
 
+    let pendingPollCount = 0;
+    const POLL_INTERVAL_MS = 400;
+    const MAX_POLL_COUNT = 30; // ~12 seconds at 400ms
+
+    /**
+     * Fallback poll for pending files. The `Opened` Apple Event /
+     * `RunEvent::Opened` handler in Rust pushes files into a pending
+     * list AND emits `file-opened`. The latter is event-based and
+     * may race with the frontend's listener registration. The poll
+     * is a deterministic fallback that drains any leftover files.
+     */
+    const pendingPollHandle = setInterval(() => {
+      pendingPollCount++;
+      void (async () => {
+        try {
+          const pending = await ipc.getPending();
+          if (pending.length > 0) {
+            console.log('[init] poll drained', pending.length, 'pending files');
+            for (const filePath of pending) {
+              await handleOpenFromPath(filePath);
+            }
+          }
+        } catch {
+          // ignore
+        }
+        if (pendingPollCount >= MAX_POLL_COUNT) {
+          clearInterval(pendingPollHandle);
+        }
+      })();
+    }, POLL_INTERVAL_MS);
+
     const init = async () => {
       // Run independent inits in parallel
       await Promise.all([settingsStore.init(), recentStore.refresh()]);
@@ -573,14 +604,34 @@
         tabsStore.newTab();
       }
 
-      // Open files passed via OS (right-click → Open with, drag onto icon, etc.)
+      // Drain any pending files captured before the webview was ready
+      // (argv + Apple Event capture on macOS). The list is consumed
+      // by this call; subsequent pending files (e.g. RunEvent::Opened
+      // that fires after the webview is loaded) come through the
+      // `file-opened` Tauri event listener.
       try {
         const pending = await ipc.getPending();
-        for (const filePath of pending) {
-          await handleOpenFromPath(filePath);
+        if (pending.length > 0) {
+          console.log('[init] getPending returned', pending.length, 'files');
+          for (const filePath of pending) {
+            await handleOpenFromPath(filePath);
+          }
         }
       } catch {
         // no pending files
+      }
+
+      // Tell Rust we are ready to receive file events. Rust will
+      // re-emit any files it captured between `setup` and now as
+      // `file-opened` Tauri events, so the listener (registered
+      // in onMount above) can pick them up.
+      try {
+        const delivered = await ipc.frontendReady();
+        if (delivered.length > 0) {
+          console.log('[init] frontendReady delivered', delivered.length, 'files');
+        }
+      } catch {
+        // ignore
       }
 
       await checkRecovery();
@@ -720,6 +771,7 @@
     return () => {
       if (toastTimer) clearTimeout(toastTimer);
       if (recoveryInterval) clearInterval(recoveryInterval);
+      clearInterval(pendingPollHandle);
       document.removeEventListener('keydown', keydownListener, { capture: true });
       window.removeEventListener('tab-close-request', tabCloseHandler);
       // Context menu DOM listeners

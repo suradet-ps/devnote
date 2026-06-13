@@ -31,6 +31,15 @@ export const ipc = {
 
   getPending: () => invoke<string[]>('get_pending_files'),
 
+  /**
+   * Signal to Rust that the frontend is ready. Rust will then
+   * re-emit any pending files via the `file-opened` Tauri event
+   * so this frontend can pick them up. This closes the race
+   * where the frontend's `listen('file-opened')` is not yet
+   * registered when the OS hands the file to the app.
+   */
+  frontendReady: () => invoke<string[]>('frontend_ready'),
+
   saveRecovery: (tabs: RecoveryEntry[]) =>
     invoke<void>('save_recovery_data', { tabs }),
   checkRecovery: () => invoke<RecoveryEntry[] | null>('check_recovery_data'),

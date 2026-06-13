@@ -426,7 +426,35 @@ pub async fn remove_recent_file(
 pub async fn get_pending_files(
     state: tauri::State<'_, crate::PendingFilesState>,
 ) -> Result<Vec<String>, String> {
-    Ok(state.drain())
+    let pending = state.drain();
+    log::info!("[get_pending_files] returning {} files", pending.len());
+    Ok(pending)
+}
+
+/// Frontend signals it is ready to receive any pending file-open events.
+/// Rust drains the pending list, then re-emits each file via the
+/// `file-opened` Tauri event so the frontend's `listen('file-opened')`
+/// handler can pick them up. This closes the race where the
+/// frontend's listener might not yet be registered when the
+/// underlying Apple Event / RunEvent::Opened is processed.
+#[tauri::command]
+pub async fn frontend_ready(
+    state: tauri::State<'_, crate::PendingFilesState>,
+    app: tauri::AppHandle,
+) -> Result<Vec<String>, String> {
+    use tauri::Manager;
+    let pending = state.drain();
+    log::info!(
+        "[frontend_ready] frontend signaled ready, delivering {} pending files",
+        pending.len()
+    );
+    if !pending.is_empty()
+        && let Some(window) = app.get_webview_window("main")
+    {
+        use tauri::Emitter;
+        window.emit("file-opened", &pending).ok();
+    }
+    Ok(pending)
 }
 
 #[cfg(test)]
