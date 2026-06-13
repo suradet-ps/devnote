@@ -363,6 +363,7 @@ pub fn run() {
         tauri::RunEvent::MenuEvent(ref menu_event) => {
             handle_menu_event(app_handle, menu_event.id().as_ref());
         }
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
         tauri::RunEvent::Opened { urls, .. } => {
             use tauri::Emitter;
             let paths: Vec<String> = urls
