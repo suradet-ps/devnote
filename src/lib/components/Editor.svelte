@@ -40,18 +40,8 @@
   }
 
   function createEditor(doc: string, lang: string) {
-    console.log('[Editor] createEditor() called', {
-      tabId,
-      docLength: doc.length,
-      docPreview: doc.slice(0, 80),
-      lang,
-      hasEditorEl: !!editorEl,
-    });
     destroyEditor();
-    if (!editorEl) {
-      console.warn('[Editor] createEditor aborted: editorEl not bound');
-      return;
-    }
+    if (!editorEl) return;
 
     const state = createEditorState(
       doc,
@@ -80,10 +70,6 @@
     view.focus();
     // If the language pack is async, apply it when it resolves
     reconfigureLanguage(view, lang);
-    console.log('[Editor] view created', {
-      docLengthInView: view.state.doc.length,
-      docPreviewInView: view.state.doc.toString().slice(0, 80),
-    });
   }
 
   async function handleEditorAction(action: EditorAction) {
@@ -151,35 +137,16 @@
   }
 
   $effect(() => {
-    // Read all the props the effect depends on so Svelte 5's reactivity
-    // tracks them. Capture into locals for the log message.
-    const t = tabId;
-    const l = language;
-    const c = content;
-    console.log('[Editor] effect#1 (tabId change) check', {
-      tabId: t,
-      contentLength: c.length,
-      contentPreview: c.slice(0, 80),
-      language: l,
-      hasView: !!view,
-      lastTabId,
-      willRecreate: view != null && t !== lastTabId,
-    });
-    if (view && t !== lastTabId) {
-      createEditor(c, l);
+    if (view && tabId !== lastTabId) {
+      createEditor(content, language);
     }
   });
 
   $effect(() => {
-    const c = content;
-    if (view && c !== view.state.doc.toString()) {
-      console.log('[Editor] effect#2 (content sync) dispatching', {
-        contentLength: c.length,
-        viewDocLength: view.state.doc.length,
-      });
+    if (view && content !== view.state.doc.toString()) {
       suppressNextUpdate = true;
       view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: c },
+        changes: { from: 0, to: view.state.doc.length, insert: content },
       });
       requestAnimationFrame(() => {
         suppressNextUpdate = false;
@@ -200,11 +167,6 @@
   let removeActionListener: (() => void) | null = null;
 
   onMount(() => {
-    console.log('[Editor] onMount fired', {
-      tabId,
-      contentLength: content.length,
-      contentPreview: content.slice(0, 80),
-    });
     createEditor(content, language);
     removeActionListener = onEditorAction(handleEditorAction);
   });

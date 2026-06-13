@@ -107,7 +107,6 @@
   let pendingResolve: ((r: ConfirmResult) => void) | null = null;
 
   function resolveConfirm(result: ConfirmResult) {
-    console.log('[confirm] resolved:', result);
     confirmOpen = false;
     const resolve = pendingResolve;
     pendingResolve = null;
@@ -145,24 +144,8 @@
     try {
       const payload = await ipc.openFile();
       if (payload) {
-        console.log('[openFile] payload received:', {
-          path: payload.path,
-          file_name: payload.file_name,
-          content_length: payload.content.length,
-          content_preview: payload.content.slice(0, 100),
-          encoding: payload.encoding,
-          line_ending: payload.line_ending,
-        });
         tabsStore.openTab(payload);
         await recentStore.add(payload.path);
-        // Verify the tab was created with content
-        const tab = tabsStore.tabs.find((t) => t.path === payload.path);
-        console.log('[openFile] tab after openTab:', tab ? {
-          id: tab.id,
-          fileName: tab.fileName,
-          content_length: tab.content.length,
-          content_preview: tab.content.slice(0, 100),
-        } : 'NOT FOUND');
       }
     } catch (e: unknown) {
       showToast(`Failed to open file: ${errorMessage(e)}`);
@@ -342,15 +325,22 @@
   }
 
   /**
-   * Close-window flow. MUST be called only from the Tauri close interceptor.
-   * Always decides whether to close. Returns nothing — side effect is `appWindow.close()`.
+   * Set to true when we have already decided to close (after the user
+   * confirmed via the dirty-tabs dialog). Prevents the close-interceptor
+   * from intercepting the programmatic close() we then issue.
+   */
+  let isClosingProgrammatically = $state(false);
+
+  /**
+   * Close-window flow. Called from the Tauri close interceptor when there
+   * ARE dirty tabs, or directly from Cmd+Q / the toolbar close button.
+   * When there are no dirty tabs we let the OS close the window directly
+   * (no preventDefault in the interceptor) to avoid an infinite loop.
    */
   async function handleCloseRequest(): Promise<void> {
-    console.log('[close] handleCloseRequest called');
     const dirtyTabs = tabsStore.getDirtyTabs();
-    console.log('[close] dirty tabs:', dirtyTabs.length);
     if (dirtyTabs.length === 0) {
-      console.log('[close] no dirty tabs, closing window');
+      isClosingProgrammatically = true;
       getAppWindow().close();
       return;
     }
@@ -360,7 +350,6 @@
       `You have ${dirtyTabs.length} unsaved file(s). Save before closing?`,
       { saveLabel: 'Save All' },
     );
-    console.log('[close] user chose:', result);
 
     if (result === 'cancel') return;
 
@@ -389,7 +378,7 @@
         return;
       }
     }
-    console.log('[close] calling appWindow.close()');
+    isClosingProgrammatically = true;
     getAppWindow().close();
   }
 
@@ -551,7 +540,27 @@
 
   onMount(() => {
     // Single source of truth: Tauri onCloseRequested interceptor.
+    // We MUST NOT call preventDefault unconditionally:
+    //   1. If we do and the window has no dirty tabs, our own
+    //      handleCloseRequest() will call getAppWindow().close(),
+    //      which fires another onCloseRequested → we preventDefault
+    //      again → infinite loop, the window never actually closes.
+    //   2. If isClosingProgrammatically is set, we have already
+    //      decided to close (e.g. user clicked "Don't Save"); let
+    //      the OS proceed.
+    //   3. Otherwise (no dirty tabs, OS-initiated), just return and
+    //      let the OS close the window.
+    //   4. If there ARE dirty tabs, preventDefault and ask.
     const closeUnlistenPromise = getAppWindow().onCloseRequested((event) => {
+      if (isClosingProgrammatically) {
+        // We initiated the close; allow it.
+        return;
+      }
+      if (tabsStore.getDirtyTabs().length === 0) {
+        // No dirty tabs; let the OS close the window.
+        return;
+      }
+      // Has dirty tabs; intercept and show the dialog.
       event.preventDefault();
       void handleCloseRequest();
     });
