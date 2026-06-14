@@ -3,13 +3,27 @@
 # Run after `bun run tauri build`.
 #
 # Usage:
-#   ./scripts/post-build-macos.sh [path-to-app-bundle]
+#   ./scripts/post-build-macos.sh [path-to-app-bundle] [--production]
 #
-# If no path is provided, it looks for the app in src-tauri/target/release/bundle/macos/
+# By default this uses `entitlements-dev.plist` (no sandbox) so that
+# Finder "Open With" / file associations work for local testing.
+# Pass --production to use the sandboxed `entitlements.plist`
+# (only meaningful when shipping under a paid Developer ID).
 
 set -euo pipefail
 
 APP_BUNDLE="${1:-}"
+USE_PRODUCTION_ENTITLEMENTS=false
+
+# Parse args
+for arg in "$@"; do
+  case "$arg" in
+    --production)
+      USE_PRODUCTION_ENTITLEMENTS=true
+      shift
+      ;;
+  esac
+done
 
 if [ -z "$APP_BUNDLE" ]; then
   RELEASE_BUNDLE="src-tauri/target/release/bundle/macos/text-rs.app"
@@ -21,7 +35,7 @@ if [ -z "$APP_BUNDLE" ]; then
     APP_BUNDLE="$DEBUG_BUNDLE"
   else
     echo "Error: Could not find .app bundle. Provide the path as an argument."
-    echo "Usage: $0 /path/to/text-rs.app"
+    echo "Usage: $0 /path/to/text-rs.app [--production]"
     exit 1
   fi
 fi
@@ -41,14 +55,21 @@ echo "Info.plist updated."
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ENTITLEMENTS="$PROJECT_ROOT/src-tauri/entitlements.plist"
+
+if [ "$USE_PRODUCTION_ENTITLEMENTS" = "true" ]; then
+  ENTITLEMENTS="$PROJECT_ROOT/src-tauri/entitlements.plist"
+  echo "Using PRODUCTION entitlements (sandboxed) — file associations require Developer ID signing."
+else
+  ENTITLEMENTS="$PROJECT_ROOT/src-tauri/entitlements-dev.plist"
+  echo "Using DEV entitlements (no sandbox) — file associations work with ad-hoc signing."
+fi
 
 echo "=== Step 2: Ad-hoc code signing with entitlements ==="
 if [ -f "$ENTITLEMENTS" ]; then
   codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$APP_BUNDLE"
   echo "Signed with entitlements: $APP_BUNDLE"
 else
-  echo "Warning: entitlements.plist not found at $ENTITLEMENTS"
+  echo "Warning: $ENTITLEMENTS not found"
   codesign --force --deep --sign - "$APP_BUNDLE"
   echo "Signed without entitlements: $APP_BUNDLE"
 fi

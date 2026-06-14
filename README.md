@@ -134,6 +134,25 @@ cd src-tauri && cargo test
 node scripts/gen-icons.cjs
 ```
 
+## macOS build notes
+
+The release build is signed with an ad-hoc identity. The
+`post-build-macos.sh` script selects which entitlements to apply:
+
+- **Default (dev)**: `entitlements-dev.plist` — no sandbox. Required for
+  Finder "Open With" / file associations to work with ad-hoc signing,
+  because macOS does **not** pass file paths to a sandboxed app that is
+  only ad-hoc signed. Use this for local testing.
+- **`--production`** flag: `entitlements.plist` — sandboxed. Only useful
+  when shipping under a paid Developer ID; ad-hoc + sandboxed apps will
+  have file associations silently broken.
+
+```bash
+bun run tauri build
+./scripts/post-build-macos.sh                                 # dev (no sandbox)
+./scripts/post-build-macos.sh src-tauri/target/.../text-rs.app --production  # sandboxed
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
