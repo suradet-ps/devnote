@@ -104,10 +104,7 @@ fn ensure_extension(path_str: &str, default_ext: &str) -> String {
     let visible = file_name.trim_start_matches('.');
     if !visible.contains('.') {
         let new_name = format!("{}.{}", file_name, default_ext);
-        return parent
-            .join(new_name)
-            .to_string_lossy()
-            .replace('\\', "/");
+        return parent.join(new_name).to_string_lossy().replace('\\', "/");
     }
 
     path_str.to_string()
