@@ -696,7 +696,7 @@
       listen('menu-about', () => {
         void showConfirmDialog(
           'About Text RS',
-          'Text RS v0.2.0\nA fast, lightweight text editor.\nBuilt with Tauri, Svelte 5, and CodeMirror 6.',
+          'Text RS v1.0.0\nA fast, lightweight text editor.\nBuilt with Tauri, Svelte 5, and CodeMirror 6.',
           { showDiscard: false, showCancel: false, saveLabel: 'OK' },
         );
       }),
