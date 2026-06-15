@@ -261,11 +261,11 @@
   function updateWindowTitle() {
     const tab = tabsStore.activeTab;
     if (!tab) {
-      ipc.setWindowTitle('text-rs').catch(() => {});
+      ipc.setWindowTitle('Text RS').catch(() => {});
       return;
     }
     const dirty = tab.content !== tab.savedContent ? '\u2022 ' : '';
-    const title = `${dirty}${tab.fileName} \u2014 text-rs`;
+    const title = `${dirty}${tab.fileName} \u2014 Text RS`;
     ipc.setWindowTitle(title).catch(() => {});
   }
 
@@ -274,7 +274,7 @@
   $effect(() => {
     const tab = tabsStore.activeTab;
     if (!tab) {
-      ipc.setWindowTitle('text-rs').catch(() => {});
+      ipc.setWindowTitle('Text RS').catch(() => {});
       lastTitleDirty = false;
       return;
     }
@@ -695,8 +695,8 @@
       listen<string>('menu-open-recent', (e) => { void handleOpenRecent(e.payload); }),
       listen('menu-about', () => {
         void showConfirmDialog(
-          'About text-rs',
-          'text-rs v0.2.0\nA fast, lightweight text editor.\nBuilt with Tauri, Svelte 5, and CodeMirror 6.',
+          'About Text RS',
+          'Text RS v0.2.0\nA fast, lightweight text editor.\nBuilt with Tauri, Svelte 5, and CodeMirror 6.',
           { showDiscard: false, showCancel: false, saveLabel: 'OK' },
         );
       }),

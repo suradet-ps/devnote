@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
     <key>NSDesktopFolderUsageDescription</key>
-    <string>text-rs needs access to your Desktop to open and save files.</string>
+    <string>Text RS needs access to your Desktop to open and save files.</string>
     <key>NSDocumentsFolderUsageDescription</key>
-    <string>text-rs needs access to your Documents folder to open and save files.</string>
+    <string>Text RS needs access to your Documents folder to open and save files.</string>
     <key>NSDownloadsFolderUsageDescription</key>
-    <string>text-rs needs access to your Downloads folder to open and save files.</string>
+    <string>Text RS needs access to your Downloads folder to open and save files.</string>
 </dict>
 </plist>
