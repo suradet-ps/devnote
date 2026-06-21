@@ -8,6 +8,7 @@ tauri-build = { version = "2.6", features = [] }
 
 [dependencies]
 tauri = { version = "2.11", features = [] }
+tauri-plugin-clipboard-manager = "2.2"
 tauri-plugin-dialog = "2.7"
 tauri-plugin-shell = "2.3"
 tauri-plugin-store = "2.4"

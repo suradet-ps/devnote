@@ -19,6 +19,9 @@
     "dialog:allow-save",
     "shell:default",
     "shell:allow-open",
-    "store:default"
+    "store:default",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text"
   ]
 }

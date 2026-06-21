@@ -478,6 +478,24 @@
       // (which checks for dirty tabs) runs.
       e.preventDefault();
       void handleCloseRequest();
+    } else if (mod && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'undo' });
+    } else if (mod && e.key === 'z' && e.shiftKey) {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'redo' });
+    } else if (mod && e.key === 'c') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'copy' });
+    } else if (mod && e.key === 'x') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'cut' });
+    } else if (mod && e.key === 'v') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'paste' });
+    } else if (mod && e.key === 'a') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'select-all' });
     }
   }
 
