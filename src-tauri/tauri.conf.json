@@ -104,7 +104,13 @@
       "minimumSystemVersion": "11.0",
       "entitlements": "./entitlements.plist",
       "infoPlist": "./custom-info.plist",
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "dmg": {
+        "background": "dmg/background.png",
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 420, "y": 170 },
+        "windowSize": { "width": 660, "height": 400 }
+      }
     },
     "windows": {
       "nsis": {
