@@ -14,10 +14,10 @@ use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBui
 fn init_logging(app_data_dir: &std::path::Path) {
     let log_dir = app_data_dir.join("logs");
     if let Err(e) = std::fs::create_dir_all(&log_dir) {
-        eprintln!("text-rs: failed to create log dir {:?}: {}", log_dir, e);
+        eprintln!("devnotes: failed to create log dir {:?}: {}", log_dir, e);
         return;
     }
-    let log_file = log_dir.join("text-rs.log");
+    let log_file = log_dir.join("devnotes.log");
     match std::fs::File::create(&log_file) {
         Ok(file) => {
             let _ = simplelog::CombinedLogger::init(vec![simplelog::WriteLogger::new(
@@ -27,7 +27,7 @@ fn init_logging(app_data_dir: &std::path::Path) {
             )]);
         }
         Err(e) => {
-            eprintln!("text-rs: failed to open log file {:?}: {}", log_file, e);
+            eprintln!("devnotes: failed to open log file {:?}: {}", log_file, e);
         }
     }
 }
@@ -193,7 +193,7 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
 
     let help_menu = SubmenuBuilder::new(app, "Help")
         .item(
-            &MenuItemBuilder::new("About Text RS")
+            &MenuItemBuilder::new("About Devnotes")
                 .id("menu-about")
                 .build(app)
                 .unwrap(),
@@ -375,7 +375,7 @@ pub fn run() {
                 Err(e) => log::error!("[menu] failed to set menu: {}", e),
             }
 
-            log::info!("text-rs started");
+            log::info!("devnotes started");
             log::info!("CLI args: {:?}", std::env::args().collect::<Vec<_>>());
 
             Ok(())
@@ -431,7 +431,7 @@ pub fn run() {
             }
         }
         tauri::RunEvent::ExitRequested { .. } => {
-            log::info!("text-rs exiting");
+            log::info!("devnotes exiting");
         }
         _ => {}
     });

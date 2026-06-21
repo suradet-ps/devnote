@@ -34,7 +34,7 @@ import {
 import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
 import { lintKeymap } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { textRsLightTheme } from './theme';
+import { devnotesLightTheme } from './theme';
 import { getLanguage } from './extensions';
 import type { Settings } from '$lib/stores/settings.svelte';
 
@@ -89,7 +89,7 @@ export function createEditorState(
         indentWithTab,
       ]),
       wrapCompartment.of(settings.wordWrap ? EditorView.lineWrapping : []),
-      themeCompartment.of(theme === 'dark' ? oneDark : textRsLightTheme),
+      themeCompartment.of(theme === 'dark' ? oneDark : devnotesLightTheme),
       fontSizeCompartment.of(
         EditorView.theme({
           '&': { fontSize: `${settings.fontSize}px` },
@@ -117,7 +117,7 @@ export function reconfigureView(
   view.dispatch({
     effects: [
       wrapCompartment.reconfigure(settings.wordWrap ? EditorView.lineWrapping : []),
-      themeCompartment.reconfigure(theme === 'dark' ? oneDark : textRsLightTheme),
+      themeCompartment.reconfigure(theme === 'dark' ? oneDark : devnotesLightTheme),
       fontSizeCompartment.reconfigure(
         EditorView.theme({
           '&': { fontSize: `${settings.fontSize}px` },

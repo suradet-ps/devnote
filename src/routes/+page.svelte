@@ -261,11 +261,11 @@
   function updateWindowTitle() {
     const tab = tabsStore.activeTab;
     if (!tab) {
-      ipc.setWindowTitle('Text RS').catch(() => {});
+      ipc.setWindowTitle('Devnotes').catch(() => {});
       return;
     }
     const dirty = tab.content !== tab.savedContent ? '\u2022 ' : '';
-    const title = `${dirty}${tab.fileName} \u2014 Text RS`;
+    const title = `${dirty}${tab.fileName} \u2014 Devnotes`;
     ipc.setWindowTitle(title).catch(() => {});
   }
 
@@ -274,7 +274,7 @@
   $effect(() => {
     const tab = tabsStore.activeTab;
     if (!tab) {
-      ipc.setWindowTitle('Text RS').catch(() => {});
+      ipc.setWindowTitle('Devnotes').catch(() => {});
       lastTitleDirty = false;
       return;
     }
@@ -695,8 +695,8 @@
       listen<string>('menu-open-recent', (e) => { void handleOpenRecent(e.payload); }),
       listen('menu-about', () => {
         void showConfirmDialog(
-          'About Text RS',
-          'Text RS v1.0.0\nA fast, lightweight text editor.\nBuilt with Tauri, Svelte 5, and CodeMirror 6.',
+          'About Devnotes',
+          'Devnotes v1.0.0\nA fast, lightweight text editor.\nBuilt with Tauri, Svelte 5, and CodeMirror 6.',
           { showDiscard: false, showCancel: false, saveLabel: 'OK' },
         );
       }),

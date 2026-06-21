@@ -1,4 +1,4 @@
-# text-rs
+# devnotes
 **Tauri 2.11 + Svelte 5 (TypeScript) Desktop Text Editor**
 
 ---
@@ -7,8 +7,8 @@
 
 | Item | Value |
 |---|---|
-| App name | **text-rs** |
-| Binary name | `text-rs` |
+| App name | **devnotes** |
+| Binary name | `devnotes` |
 | Tauri version | 2.11 (latest stable) |
 | Frontend | Svelte 5 + TypeScript + Vite |
 | Styling | CSS custom properties (tokens from DESIGN.md) |
@@ -20,7 +20,7 @@
 ## 1. Repository Structure
 
 ```
-text-rs/
+devnotes/
 ├── AGENTS.md                  ← this file
 ├── DESIGN.md                  ← design tokens (Anthropic visual system)
 ├── src-tauri/
@@ -56,7 +56,7 @@ text-rs/
 │   │   │   └── ContextMenu.svelte
 │   │   ├── codemirror/
 │   │   │   ├── setup.ts       ← editor state factory
-│   │   │   ├── theme.ts       ← Sabot light + dark CM themes
+│   │   │   ├── theme.ts       ← Devnotes light + dark CM themes
 │   │   │   ├── extensions.ts  ← language packs loader
 │   │   │   └── keymap.ts      ← custom keybindings
 │   │   └── utils/
@@ -163,7 +163,7 @@ Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
 {
   "app": {
     "windows": [{
-      "title": "text-rs",
+      "title": "devnotes",
       "width": 1200,
       "height": 800,
       "minWidth": 600,
@@ -173,8 +173,8 @@ Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
     }]
   },
   "bundle": {
-    "identifier": "th.hospital.sabot.text-rs",
-    "productName": "text-rs"
+    "identifier": "com.devnotes.editor",
+    "productName": "devnotes"
   }
 }
 ```
@@ -349,7 +349,7 @@ export interface Settings {
   tabSize: number           // default 2
   insertSpaces: boolean     // default true
 }
-// Persisted to localStorage key: 'sabot-settings'
+// Persisted to localStorage key: 'devnotes-settings'
 ```
 
 ---
@@ -360,7 +360,7 @@ export interface Settings {
 
 - Background: `--surface-dark`
 - Text: `--on-dark`, 13px Inter 500
-- Shows: `[AppIcon] text-rs — {activeFileName}{dirtyDot}`
+- Shows: `[AppIcon] devnotes — {activeFileName}{dirtyDot}`
   - `dirtyDot` = `•` when active tab is dirty
 - Right side: minimize / maximize / close buttons (custom SVG, color `--on-dark-soft`)
 - Drag region: `data-tauri-drag-region` on the bar itself
@@ -496,18 +496,18 @@ export function createEditorExtensions(settings: Settings, theme: 'light' | 'dar
       indentWithTab,
     ]),
     settings.wordWrap ? EditorView.lineWrapping : [],
-    theme === 'dark' ? oneDark : textRsLightTheme,
+    theme === 'dark' ? oneDark : devnotesLightTheme,
     EditorView.theme({ '&': { fontSize: `${settings.fontSize}px` } }),
   ]
 }
 ```
 
-### 7.3 text-rs Light Theme (`codemirror/theme.ts`)
+### 7.3 Devnotes Light Theme (`codemirror/theme.ts`)
 
 Map DESIGN.md tokens to CodeMirror theme spec:
 
 ```typescript
-export const textRsLightTheme = EditorView.theme({
+export const devnotesLightTheme = EditorView.theme({
   '&': {
     backgroundColor: 'var(--canvas)',
     color: 'var(--ink)',
@@ -613,7 +613,7 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 
 - `isDirty(tab)` = `tab.content !== tab.savedContent`
 - Dirty indicator: `•` appended to tab name, e.g. `main.rs •`
-- Title bar shows `•` before app name when active tab is dirty: `• text-rs — main.rs`
+- Title bar shows `•` before app name when active tab is dirty: `• devnotes — main.rs`
 - Dirty check triggers on: tab close, window close, open new file in same tab (not applicable here — we always open in new tab)
 - After successful save: `markSaved(id, path)` — sets `savedContent = content`
 
