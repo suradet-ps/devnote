@@ -13,13 +13,13 @@ export const devnoteLightTheme = EditorView.theme(
       borderLeftColor: 'var(--primary)',
     },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
-      backgroundColor: 'rgba(204, 120, 92, 0.15)',
+      backgroundColor: 'rgba(204, 120, 92, 0.12)',
     },
     '.cm-activeLine': {
-      backgroundColor: 'rgba(204, 120, 92, 0.06)',
+      backgroundColor: 'rgba(204, 120, 92, 0.04)',
     },
     '.cm-activeLineGutter': {
-      backgroundColor: 'rgba(204, 120, 92, 0.10)',
+      backgroundColor: 'rgba(204, 120, 92, 0.07)',
     },
     '.cm-gutters': {
       backgroundColor: 'var(--surface-soft)',
@@ -34,15 +34,15 @@ export const devnoteLightTheme = EditorView.theme(
       color: 'var(--muted)',
     },
     '.cm-matchingBracket': {
-      backgroundColor: 'rgba(204, 120, 92, 0.2)',
+      backgroundColor: 'rgba(204, 120, 92, 0.15)',
       outline: '1px solid var(--primary)',
     },
     '.cm-searchMatch': {
-      backgroundColor: 'rgba(232, 165, 90, 0.3)',
+      backgroundColor: 'rgba(232, 165, 90, 0.25)',
       outline: '1px solid var(--accent-amber)',
     },
     '.cm-searchMatch.cm-searchMatch-selected': {
-      backgroundColor: 'rgba(204, 120, 92, 0.35)',
+      backgroundColor: 'rgba(204, 120, 92, 0.28)',
     },
   },
   { dark: false },

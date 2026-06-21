@@ -1,25 +1,25 @@
 :root {
-  --canvas: #faf9f5;
-  --surface-soft: #f5f0e8;
-  --surface-card: #efe9de;
-  --surface-cream-strong: #e8e0d2;
+  --canvas: #FCFBF7;
+  --surface-soft: #F8F5EF;
+  --surface-card: #F4F1EA;
+  --surface-cream-strong: #ECE7DD;
   --surface-dark: #181715;
   --surface-dark-elevated: #252320;
   --surface-dark-soft: #1f1e1b;
-  --hairline: #e6dfd8;
-  --hairline-soft: #ebe6df;
+  --hairline: #E2DEC9;
+  --hairline-soft: #E8E4D3;
 
   --primary: #cc785c;
   --primary-active: #a9583e;
-  --primary-disabled: #e6dfd8;
+  --primary-disabled: #E2DEC9;
   --accent-teal: #5db8a6;
   --accent-amber: #e8a55a;
 
-  --ink: #141413;
-  --body-strong: #252523;
-  --body: #3d3d3a;
-  --muted: #6c6a64;
-  --muted-soft: #8e8b82;
+  --ink: #2c2b29;
+  --body-strong: #333230;
+  --body: #454542;
+  --muted: #7a7873;
+  --muted-soft: #9a9893;
   --on-primary: #ffffff;
   --on-dark: #faf9f5;
   --on-dark-soft: #a09d96;
@@ -117,5 +117,5 @@ input {
 }
 
 ::selection {
-  background: rgba(204, 120, 92, 0.2);
+  background: rgba(204, 120, 92, 0.15);
 }
