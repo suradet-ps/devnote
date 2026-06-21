@@ -10,14 +10,14 @@
   - Edit: Undo, Redo, Cut, Copy, Paste, Select All, Find..., Find & Replace..., Go to Line...
   - View: Word Wrap (check), Status Bar (check), Zoom In/Out/Reset
   - Window: Minimize, Maximize
-  - Help: About devnotes
+  - Help: About devnote
   - Keyboard accelerators use `CmdOrCtrl` for cross-platform compatibility
 - **Native titlebar**: Changed from custom titlebar (`decorations: false`) to OS-native titlebar (`decorations: true`)
-  - Title updates reflect: `[dirty dot] filename — devnotes`
+  - Title updates reflect: `[dirty dot] filename — devnote`
 
 #### Settings & Persistence
 - **Settings now use `tauri-plugin-store`** instead of `localStorage`
-  - Settings file: `$APPDATA/devnotes/.settings.dat`
+  - Settings file: `$APPDATA/devnote/.settings.dat`
   - Falls back to localStorage if store plugin unavailable
 - **New settings**: `showStatusBar` (toggle), `theme` defaults to `"system"`
 - **System theme detection**: `theme: "system"` listens to `prefers-color-scheme` media query
@@ -59,11 +59,11 @@
 - **Tab key behavior**: Tab inserts spaces/tab in editor, doesn't steal focus
 
 #### Error Handling & Resilience
-- **Session recovery**: Auto-saves unsaved tab contents every 15 seconds to `$APPDATA/devnotes/recovery/`
+- **Session recovery**: Auto-saves unsaved tab contents every 15 seconds to `$APPDATA/devnote/recovery/`
   - Only writes when content has changed (hash check)
 - **Recovery on restart**: Detects recovery files and offers to restore unsaved tabs
   - Cancel leaves recovery data intact for next launch
-- **File logging**: Errors and info logged to `$APPDATA/devnotes/logs/devnotes.log`
+- **File logging**: Errors and info logged to `$APPDATA/devnote/logs/devnote.log`
   - Falls back to stderr if log file cannot be opened
 - **Toast notifications**: Non-blocking error toasts (bottom-right, 4s duration)
 - **No `unwrap()` in command paths**: All Rust commands return `Result<T, String>`
@@ -105,7 +105,7 @@
 
 ### Migration Notes
 
-1. **Settings**: `sabot-settings` localStorage key is migrated to the Tauri store automatically on first load. If the store is unavailable, falls back to localStorage with the new `devnotes-settings` key.
+1. **Settings**: `sabot-settings` localStorage key is migrated to the Tauri store automatically on first load. If the store is unavailable, falls back to localStorage with the new `devnote-settings` key.
 2. **Custom titlebar removed**: `TitleBar.svelte` is no longer used; app now uses native OS titlebar.
 3. **Menu handles changed**: Menu events flow from Rust `lib.rs` via `app.emit()` to frontend event listeners.
 4. **FilePayload updated**: Now includes `encoding` and `line_ending` fields (snake_case to match Rust).

@@ -1,6 +1,6 @@
 import { EditorView } from '@codemirror/view';
 
-export const devnotesLightTheme = EditorView.theme(
+export const devnoteLightTheme = EditorView.theme(
   {
     '&': {
       backgroundColor: 'var(--canvas)',

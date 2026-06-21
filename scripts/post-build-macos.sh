@@ -26,8 +26,8 @@ for arg in "$@"; do
 done
 
 if [ -z "$APP_BUNDLE" ]; then
-  RELEASE_BUNDLE="src-tauri/target/release/bundle/macos/devnotes.app"
-  DEBUG_BUNDLE="src-tauri/target/debug/bundle/macos/devnotes.app"
+  RELEASE_BUNDLE="src-tauri/target/release/bundle/macos/devnote.app"
+  DEBUG_BUNDLE="src-tauri/target/debug/bundle/macos/devnote.app"
 
   if [ -d "$RELEASE_BUNDLE" ]; then
     APP_BUNDLE="$RELEASE_BUNDLE"
@@ -35,7 +35,7 @@ if [ -z "$APP_BUNDLE" ]; then
     APP_BUNDLE="$DEBUG_BUNDLE"
   else
     echo "Error: Could not find .app bundle. Provide the path as an argument."
-    echo "Usage: $0 /path/to/devnotes.app [--production]"
+    echo "Usage: $0 /path/to/devnote.app [--production]"
     exit 1
   fi
 fi
@@ -48,9 +48,9 @@ if [ ! -f "$INFO_PLIST" ]; then
 fi
 
 echo "=== Step 1: Patching Info.plist ==="
-  /usr/libexec/PlistBuddy -c "Add :NSDesktopFolderUsageDescription string 'Devnotes needs access to your Desktop to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
-  /usr/libexec/PlistBuddy -c "Add :NSDocumentsFolderUsageDescription string 'Devnotes needs access to your Documents folder to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
-  /usr/libexec/PlistBuddy -c "Add :NSDownloadsFolderUsageDescription string 'Devnotes needs access to your Downloads folder to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Add :NSDesktopFolderUsageDescription string 'Devnote needs access to your Desktop to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Add :NSDocumentsFolderUsageDescription string 'Devnote needs access to your Documents folder to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Add :NSDownloadsFolderUsageDescription string 'Devnote needs access to your Downloads folder to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
 echo "Info.plist updated."
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

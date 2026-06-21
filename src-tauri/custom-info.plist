@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
     <key>NSDesktopFolderUsageDescription</key>
-    <string>Devnotes needs access to your Desktop to open and save files.</string>
+    <string>Devnote needs access to your Desktop to open and save files.</string>
     <key>NSDocumentsFolderUsageDescription</key>
-    <string>Devnotes needs access to your Documents folder to open and save files.</string>
+    <string>Devnote needs access to your Documents folder to open and save files.</string>
     <key>NSDownloadsFolderUsageDescription</key>
-    <string>Devnotes needs access to your Downloads folder to open and save files.</string>
+    <string>Devnote needs access to your Downloads folder to open and save files.</string>
 </dict>
 </plist>

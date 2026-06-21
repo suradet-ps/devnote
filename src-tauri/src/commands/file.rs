@@ -498,7 +498,7 @@ mod tests {
     #[test]
     fn validate_path_accepts_existing_file() {
         let dir = std::env::temp_dir();
-        let f = dir.join("devnotes-test-validate.txt");
+        let f = dir.join("devnote-test-validate.txt");
         std::fs::write(&f, b"hello").unwrap();
         let result = validate_path(&f.to_string_lossy());
         assert!(result.is_ok());

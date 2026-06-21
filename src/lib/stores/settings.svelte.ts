@@ -22,7 +22,7 @@ const DEFAULT_SETTINGS: Settings = {
   insertSpaces: true,
 };
 
-const LOCALSTORAGE_KEY = 'devnotes-settings';
+const LOCALSTORAGE_KEY = 'devnote-settings';
 // Historical keys we migrate from on first load
 const LEGACY_KEYS = ['sabot-settings', LOCALSTORAGE_KEY] as const;
 

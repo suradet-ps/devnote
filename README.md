@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="src-tauri/icons/icon.png" width="128" alt="devnotes icon">
+  <img src="src-tauri/icons/icon.png" width="128" alt="devnote icon">
 </p>
 
-<h1 align="center">devnotes</h1>
+<h1 align="center">devnote</h1>
 
 <p align="center">
   A minimal, opinionated desktop text editor built with Tauri 2 and CodeMirror 6.
@@ -59,8 +59,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/suradet-ps/devnotes.git
-cd devnotes
+git clone https://github.com/suradet-ps/devnote.git
+cd devnote
 
 # Install dependencies
 bun install
@@ -79,7 +79,7 @@ bun run tauri build
 ## Project Structure
 
 ```
-devnotes/
+devnote/
 ├── src-tauri/                # Rust backend
 │   ├── src/
 │   │   ├── commands/         # Tauri IPC commands (file I/O, window)
@@ -150,7 +150,7 @@ The release build is signed with an ad-hoc identity. The
 ```bash
 bun run tauri build
 ./scripts/post-build-macos.sh                                 # dev (no sandbox)
-./scripts/post-build-macos.sh src-tauri/target/.../devnotes.app --production  # sandboxed
+./scripts/post-build-macos.sh src-tauri/target/.../devnote.app --production  # sandboxed
 ```
 
 ## Contributing
