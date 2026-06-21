@@ -56,7 +56,7 @@ devnote/
 │   │   │   └── ContextMenu.svelte
 │   │   ├── codemirror/
 │   │   │   ├── setup.ts       ← editor state factory
-│   │   │   ├── theme.ts       ← Devnote light + dark CM themes
+│   │   │   ├── theme.ts       ← DevNote light + dark CM themes
 │   │   │   ├── extensions.ts  ← language packs loader
 │   │   │   └── keymap.ts      ← custom keybindings
 │   │   └── utils/
@@ -360,7 +360,7 @@ export interface Settings {
 
 - Background: `--surface-dark`
 - Text: `--on-dark`, 13px Inter 500
-- Shows: `[AppIcon] devnote — {activeFileName}{dirtyDot}`
+- Shows: `[AppIcon] DevNote — {activeFileName}{dirtyDot}`
   - `dirtyDot` = `•` when active tab is dirty
 - Right side: minimize / maximize / close buttons (custom SVG, color `--on-dark-soft`)
 - Drag region: `data-tauri-drag-region` on the bar itself
@@ -502,7 +502,7 @@ export function createEditorExtensions(settings: Settings, theme: 'light' | 'dar
 }
 ```
 
-### 7.3 Devnote Light Theme (`codemirror/theme.ts`)
+### 7.3 DevNote Light Theme (`codemirror/theme.ts`)
 
 Map DESIGN.md tokens to CodeMirror theme spec:
 
@@ -613,7 +613,7 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 
 - `isDirty(tab)` = `tab.content !== tab.savedContent`
 - Dirty indicator: `•` appended to tab name, e.g. `main.rs •`
-- Title bar shows `•` before app name when active tab is dirty: `• devnote — main.rs`
+- Title bar shows `•` before app name when active tab is dirty: `• DevNote — main.rs`
 - Dirty check triggers on: tab close, window close, open new file in same tab (not applicable here — we always open in new tab)
 - After successful save: `markSaved(id, path)` — sets `savedContent = content`
 

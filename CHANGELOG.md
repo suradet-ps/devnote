@@ -10,10 +10,10 @@
   - Edit: Undo, Redo, Cut, Copy, Paste, Select All, Find..., Find & Replace..., Go to Line...
   - View: Word Wrap (check), Status Bar (check), Zoom In/Out/Reset
   - Window: Minimize, Maximize
-  - Help: About devnote
+  - Help: About DevNote
   - Keyboard accelerators use `CmdOrCtrl` for cross-platform compatibility
 - **Native titlebar**: Changed from custom titlebar (`decorations: false`) to OS-native titlebar (`decorations: true`)
-  - Title updates reflect: `[dirty dot] filename — devnote`
+  - Title updates reflect: `[dirty dot] filename — DevNote`
 
 #### Settings & Persistence
 - **Settings now use `tauri-plugin-store`** instead of `localStorage`

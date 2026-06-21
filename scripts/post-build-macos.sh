@@ -48,9 +48,9 @@ if [ ! -f "$INFO_PLIST" ]; then
 fi
 
 echo "=== Step 1: Patching Info.plist ==="
-  /usr/libexec/PlistBuddy -c "Add :NSDesktopFolderUsageDescription string 'Devnote needs access to your Desktop to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
-  /usr/libexec/PlistBuddy -c "Add :NSDocumentsFolderUsageDescription string 'Devnote needs access to your Documents folder to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
-  /usr/libexec/PlistBuddy -c "Add :NSDownloadsFolderUsageDescription string 'Devnote needs access to your Downloads folder to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Add :NSDesktopFolderUsageDescription string 'DevNote needs access to your Desktop to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Add :NSDocumentsFolderUsageDescription string 'DevNote needs access to your Documents folder to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Add :NSDownloadsFolderUsageDescription string 'DevNote needs access to your Downloads folder to open and save files.'" "$INFO_PLIST" 2>/dev/null || true
 echo "Info.plist updated."
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

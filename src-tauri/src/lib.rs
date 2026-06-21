@@ -193,7 +193,7 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
 
     let help_menu = SubmenuBuilder::new(app, "Help")
         .item(
-            &MenuItemBuilder::new("About Devnote")
+            &MenuItemBuilder::new("About DevNote")
                 .id("menu-about")
                 .build(app)
                 .unwrap(),
