@@ -2,7 +2,7 @@
   <img src="src-tauri/icons/icon.png" width="128" alt="devnote icon">
 </p>
 
-<h1 align="center">devnote</h1>
+<h1 align="center">DevNote</h1>
 
 <p align="center">
   A minimal, opinionated desktop text editor built with Tauri 2 and CodeMirror 6.
