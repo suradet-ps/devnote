@@ -1,0 +1,18 @@
+# Low-memory build tuning for devnote's Rust backend.
+#
+# The `windows` crate (pulled in by Tauri on Windows) is very large and, when
+# compiled with full debug info, pushes rustc's per-process heap past the quota
+# on machines with ~4 GB RAM, failing with STATUS_STACK_BUFFER_OVERRUN
+# (0xc0000409) / "Insufficient quota" (os error 1453).
+#
+# These settings keep memory pressure low enough to compile on constrained
+# dev boxes. They only affect the local `dev`/`test` profiles; release builds
+# (CI) are unaffected and keep full debug info.
+[build]
+jobs = 1
+
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0

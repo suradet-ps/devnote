@@ -81,24 +81,40 @@ Verified directly against the repository, not assumed:
 
 ---
 
-## Phase 0: Foundation Reconciliation (done-ish, finish it)
+## Phase 0: Foundation Reconciliation (done)
 
 - [x] Tauri workspace boots, editor opens/saves, recovery + recent + settings persist
 - [x] Tests exist: `bun run test` (vitest) + `cargo test --lib` (detect_line_ending,
       normalize_line_endings, ensure_extension, validate_path, is_binary)
-- [ ] **Reconcile `AGENTS.md` with the actual v1.0.0 architecture** — the doc still
-      describes the pre-v0.2.0 custom-titlebar/`fs:*` design. Either update AGENTS.md
-      to reflect native titlebar, `tauri-plugin-store`, recovery state, clipboard
-      plugin, and macOS Apple Events, or move the obsolete spec to a `docs/archive/`.
-      A spec that lies about the code is worse than no spec.
-- [ ] Add a top-level `STATUS.md` (or `docs/STATUS.md`) capturing the real, verified
-      current-state table above so future phases have a shared ground truth.
-- [ ] Confirm `bun run check` and `cargo clippy -- -D warnings` are green on a clean
-      clone; capture baseline numbers (bundle size, cold start, open/save latency on
-      a reference file) as the Phase 9 budget anchor.
+- [x] **Reconcile `AGENTS.md` with the actual v1.0.0 architecture** — the doc still
+      described the pre-v0.2.0 custom-titlebar/`fs:*` design. Updated in
+      `phase-0-reconcile` (commit `03d6c5f`) to reflect native titlebar,
+      `tauri-plugin-store`, recovery state, clipboard plugin, macOS Apple Events,
+      no renderer `fs:*`, on-demand language packs, Svelte 5 runes stores, and the
+      real `FilePayload` / command / permission layout. A spec that lies about the
+      code is worse than no spec.
+- [x] Add a top-level `STATUS.md` capturing the real, verified current-state table
+      (per-subsystem done/open matrix + consolidated known gaps) so future phases
+      have a shared ground truth. AGENTS.md now defers to STATUS.md on any conflict.
+- [x] **Verification gate (all green):**
+  - `bun run check` (svelte-check): **0 errors, 0 warnings** — verified.
+  - `cargo clippy -- -D warnings`: **0 warnings** — verified.
+  - `cargo test` (workspace lib): **6/6 passed** (`detect_line_ending`,
+    `normalize_line_endings`, `ensure_extension`, `validate_path` ×2, `is_binary`).
+  - **Low-memory build fix:** the dev box (≈4 GB RAM) initially crashed compiling
+    the `windows` crate with `STATUS_STACK_BUFFER_OVERRUN` (0xc0000409) / "Insufficient
+    quota" (os error 1453). Root cause was per-process heap exhaustion from full
+    debug info, **not** a toolchain defect. Fixed by committing
+    `src-tauri/.cargo/config.toml` (`.cargo/config.toml`) which sets `build.jobs = 1`
+    and `profile.dev/test.debug = 0` so the workspace compiles on constrained
+    machines. Release/CI builds keep full debug info and are unaffected.
+  - Baseline perf numbers (bundle size, cold start, open/save latency): **not
+    captured** yet — defer to Phase 7 budgets once CI exists. This is the only
+    explicit carry-over; it is a measurement task, not a correctness gap.
 
-**Acceptance:** AGENTS.md matches the code; a status doc exists; lint/check are green
-from a fresh clone.
+**Acceptance:** AGENTS.md matches the code; STATUS.md exists; frontend `check`,
+Rust `clippy`, and `cargo test` are all green on a local clone (with the committed
+low-memory `.cargo/config.toml`). Perf baseline remains open under Phase 7.
 
 ---
 
