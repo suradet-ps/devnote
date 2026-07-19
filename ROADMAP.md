@@ -96,22 +96,25 @@ Verified directly against the repository, not assumed:
 - [x] Add a top-level `STATUS.md` capturing the real, verified current-state table
       (per-subsystem done/open matrix + consolidated known gaps) so future phases
       have a shared ground truth. AGENTS.md now defers to STATUS.md on any conflict.
-- [~] **Verification gate (partial — environment-blocked):**
-  - `bun run check` (svelte-check): **0 errors, 0 warnings** — verified on this
-    machine after `bun install`.
-  - `cargo clippy -- -D warnings` / `cargo test --lib`: **NOT verifiable in this
-    environment** — the local Rust toolchain crashes compiling `windows-sys`
-    (`STATUS_STACK_BUFFER_OVERRUN` 0xc0000409) and `toml_datetime` (metadata stub
-    error). This is a corrupted toolchain/registry cache on the dev box, **not** a
-    code defect. Must be re-run on a clean machine / CI (Phase 1) before the release
-    gate can be declared green.
-  - Baseline numbers (bundle size, cold start, open/save latency): **not captured**
-    yet — defer to Phase 7 budgets once CI exists. Recorded here as explicitly
-    unmet rather than claimed.
+- [x] **Verification gate (all green):**
+  - `bun run check` (svelte-check): **0 errors, 0 warnings** — verified.
+  - `cargo clippy -- -D warnings`: **0 warnings** — verified.
+  - `cargo test` (workspace lib): **6/6 passed** (`detect_line_ending`,
+    `normalize_line_endings`, `ensure_extension`, `validate_path` ×2, `is_binary`).
+  - **Low-memory build fix:** the dev box (≈4 GB RAM) initially crashed compiling
+    the `windows` crate with `STATUS_STACK_BUFFER_OVERRUN` (0xc0000409) / "Insufficient
+    quota" (os error 1453). Root cause was per-process heap exhaustion from full
+    debug info, **not** a toolchain defect. Fixed by committing
+    `src-tauri/.cargo/config.toml` (`.cargo/config.toml`) which sets `build.jobs = 1`
+    and `profile.dev/test.debug = 0` so the workspace compiles on constrained
+    machines. Release/CI builds keep full debug info and are unaffected.
+  - Baseline perf numbers (bundle size, cold start, open/save latency): **not
+    captured** yet — defer to Phase 7 budgets once CI exists. This is the only
+    explicit carry-over; it is a measurement task, not a correctness gap.
 
-**Acceptance (as of this environment):** AGENTS.md matches the code; STATUS.md
-exists; frontend `check` is green. Rust lint/test + perf baseline remain open and
-are inherited by Phase 1 (CI) and Phase 7 (budgets) — they are **not** marked done.
+**Acceptance:** AGENTS.md matches the code; STATUS.md exists; frontend `check`,
+Rust `clippy`, and `cargo test` are all green on a local clone (with the committed
+low-memory `.cargo/config.toml`). Perf baseline remains open under Phase 7.
 
 ---
 
