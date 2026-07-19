@@ -19,51 +19,65 @@
 
 ## 1. Repository Structure
 
+> **Note (v1.0.0):** This structure supersedes the original scaffold. The app now
+> uses a **native OS titlebar** (`decorations: true`, no `TitleBar.svelte`),
+> **`tauri-plugin-store`** for settings (not `localStorage`), a **recovery** state,
+> a **clipboard-manager** plugin, and **macOS Apple-Events** handling for
+> "Open With" / drag-to-icon. See `STATUS.md` for the verified current-state table.
+
 ```
 devnote/
-├── AGENTS.md                  ← this file
+├── AGENTS.md                  ← this file (authoritative spec)
 ├── DESIGN.md                  ← design tokens (Anthropic visual system)
+├── STATUS.md                  ← verified current-state snapshot (kept in sync with code)
+├── CHANGELOG.md               ← release history (v0.2.0 production-grade upgrade)
+├── CONTRIBUTING.md
+├── LICENSE
+├── scripts/                   ← build scripts (icon generation, post-build macOS)
+├── .github/workflows/         ← CI + release (see Roadmap Phase 1)
 ├── src-tauri/
 │   ├── Cargo.toml
-│   ├── tauri.conf.json
+│   ├── build.rs
+│   ├── tauri.conf.json        ← decorations: true (native titlebar), bundle metadata
 │   ├── capabilities/
-│   │   └── default.json       ← permission declarations
+│   │   └── default.json       ← permission declarations (no fs:* on renderer)
+│   ├── icons/                 ← app icons (all platforms)
 │   └── src/
 │       ├── main.rs
-│       ├── lib.rs             ← app builder, plugin registration
+│       ├── lib.rs             ← app builder, plugin registration, native menu, event routing
+│       ├── macos_events.rs    ← macOS "Open With" / Apple Events (cfg target_os = "macos")
 │       ├── commands/
-│       │   ├── mod.rs
-│       │   ├── file.rs        ← open / save / save_as / recent files
-│       │   └── window.rs      ← set_title, confirm_close
+│       │   ├── mod.rs         ← file, recovery, window modules
+│       │   ├── file.rs        ← open / read / save / save_as / recent / size / pending
+│       │   ├── window.rs      ← set_window_title
+│       │   └── recovery.rs    ← save / check / clear recovery data
 │       └── state/
 │           ├── mod.rs
-│           └── recent.rs      ← RecentFiles state (JSON persistence)
+│           ├── recent.rs      ← RecentFilesState (JSON persistence, max 10)
+│           └── recovery.rs    ← RecoveryState (autosave entries)
 ├── src/
 │   ├── app.html
 │   ├── lib/
 │   │   ├── stores/
-│   │   │   ├── tabs.ts        ← tab list, active tab
-│   │   │   ├── recent.ts      ← recent files list
-│   │   │   └── settings.ts    ← theme, font size, word wrap
+│   │   │   ├── tabs.svelte.ts        ← tab list, active tab (Svelte 5 runes)
+│   │   │   ├── recent.svelte.ts      ← recent files list (mirrors Rust state)
+│   │   │   └── settings.svelte.ts    ← theme, font, wrap, persisted via tauri-plugin-store
 │   │   ├── components/
-│   │   │   ├── TitleBar.svelte
-│   │   │   ├── TabBar.svelte
-│   │   │   ├── Tab.svelte
-│   │   │   ├── Editor.svelte  ← CodeMirror 6 wrapper
-│   │   │   ├── StatusBar.svelte
-│   │   │   ├── FindReplace.svelte
-│   │   │   ├── ConfirmDialog.svelte
-│   │   │   └── ContextMenu.svelte
 │   │   ├── codemirror/
-│   │   │   ├── setup.ts       ← editor state factory
+│   │   │   ├── setup.ts       ← editor state factory (Compartment-based reconfig)
 │   │   │   ├── theme.ts       ← DevNote light + dark CM themes
-│   │   │   ├── extensions.ts  ← language packs loader
-│   │   │   └── keymap.ts      ← custom keybindings
+│   │   │   └── extensions.ts  ← on-demand language packs loader
+│   │   ├── editor/
+│   │   │   └── actions.ts     ← EditorAction discriminated-union event bus
+│   │   ├── tauri/
+│   │   │   └── ipc.ts         ← typed invoke() wrappers
 │   │   └── utils/
-│   │       ├── detect-lang.ts ← file extension → CodeMirror language
-│   │       └── format-path.ts ← shorten paths for display
+│   │       ├── detect-lang.ts ← file extension / shebang → CodeMirror language
+│   │       ├── error.ts       ← errorMessage(e: unknown) helper
+│   │       └── idle.ts        ← idle/autosave scheduling
 │   └── routes/
-│       └── +page.svelte       ← root layout
+│       ├── +layout.svelte
+│       └── +page.svelte       ← root layout, global keydown handler, event listeners
 ├── static/
 │   └── fonts/                 ← JetBrains Mono (editor), Inter (UI)
 └── package.json
@@ -168,7 +182,7 @@ Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
       "height": 800,
       "minWidth": 600,
       "minHeight": 400,
-      "decorations": false,
+      "decorations": true,
       "transparent": false
     }]
   },
@@ -179,36 +193,58 @@ Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
 }
 ```
 
-`decorations: false` → we draw our own custom title bar with window controls.
+`decorations: true` → we use the OS-native titlebar and OS-native menu bar
+(`lib.rs` builds a `Menu` and calls `app.set_menu`). There is **no** custom
+`TitleBar.svelte`; the window title is driven by `set_window_title` and shows
+`[•] filename — DevNote` (leading `•` marks a dirty active tab).
 
 ### 3.2 Required Plugins
 
 ```toml
 # src-tauri/Cargo.toml [dependencies]
-tauri = { version = "2", features = [] }
-tauri-plugin-dialog  = "2"
-tauri-plugin-fs      = "2"
-tauri-plugin-shell   = "2"          # optional: open in file manager
+tauri = { version = "2.11", features = [] }
+tauri-plugin-dialog          = "2"
+tauri-plugin-shell           = "2"   # Reveal in File Explorer / open URLs
+tauri-plugin-store           = "2"   # persistent settings (.settings.dat)
+tauri-plugin-clipboard-manager = "2" # OS clipboard ops
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
 tokio       = { version = "1", features = ["full"] }
+encoding_rs = "0.8"                   # encoding decode
+chardet     = { version = "0.2", default-features = false }  # encoding detect
+log         = "0.4"
+simplelog   = "0.12"                  # file logging
+tempfile    = "3"                     # atomic save (NamedTempFile)
 ```
+
+> **No `tauri-plugin-fs` on the renderer.** File I/O is performed exclusively by
+> Rust commands (see §4). This is a deliberate security boundary: a compromised
+> dependency or XSS in the webview cannot write to arbitrary filesystem paths.
 
 ### 3.3 Permissions (`capabilities/default.json`)
 
 ```json
 {
   "permissions": [
-    "fs:read-all",
-    "fs:write-all",
-    "dialog:open",
-    "dialog:save",
+    "core:window:default",
     "core:window:allow-set-title",
     "core:window:allow-close",
+    "core:window:allow-destroy",
     "core:window:allow-minimize",
     "core:window:allow-maximize",
     "core:window:allow-toggle-maximize",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "core:menu:default",
+    "core:event:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "shell:default",
+    "shell:allow-open",
+    "store:default",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text"
   ]
 }
 ```
@@ -275,6 +311,8 @@ pub struct FilePayload {
     pub path: String,
     pub content: String,
     pub file_name: String,  // just the filename part
+    pub encoding: String,   // e.g. "UTF-8", "UTF-16LE", "WINDOWS-1252"
+    pub line_ending: String, // "LF" | "CRLF" | "CR"
 }
 ```
 
@@ -286,28 +324,75 @@ pub struct FilePayload {
 pub fn set_window_title(window: tauri::Window, title: String) -> Result<(), String>
 ```
 
-### 4.3 `state/recent.rs`
+### 4.3 `commands/recovery.rs`
 
 ```rust
-pub struct RecentFilesState(pub Mutex<Vec<String>>);
-// Persisted to: {app_data_dir}/recent_files.json
-// Max entries: 10 (oldest removed when full)
+/// Persist unsaved tab contents for crash recovery (called on idle/autosave)
+#[tauri::command]
+pub async fn save_recovery_data(
+    state: tauri::State<'_, RecoveryState>,
+    entries: Vec<RecoveryEntry>,
+) -> Result<(), String>
+
+/// Check whether recovery data exists (frontend prompts Restore on launch)
+#[tauri::command]
+pub async fn check_recovery_data(
+    state: tauri::State<'_, RecoveryState>,
+) -> Result<bool, String>
+
+/// Clear recovery data (after Restore accepted or Discard)
+#[tauri::command]
+pub async fn clear_recovery_data(
+    state: tauri::State<'_, RecoveryState>,
+) -> Result<(), String>
+```
+
+### 4.4 `state/recent.rs`
+
+```rust
+pub struct RecentFilesState {
+    pub files: Mutex<Vec<String>>,
+    persistence_path: PathBuf, // {app_data_dir}/recent_files.json
+}
+impl RecentFilesState {
+    pub const MAX_ENTRIES: usize = 10;
+    // load_from_disk on init; persist() writes JSON, creates parent dir
+}
+```
+
+### 4.5 `state/recovery.rs`
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecoveryEntry {
+    pub file_name: String,
+    pub content: String,
+    pub path: Option<String>,
+    pub saved_at: String,
+}
+
+pub struct RecoveryState {
+    pub dir: PathBuf,                 // {app_data_dir}/recovery/
+    pub entries: Mutex<Vec<RecoveryEntry>>,
+}
 ```
 
 ---
 
 ## 5. Frontend State Architecture
 
-### 5.1 Tab Model (`stores/tabs.ts`)
+### 5.1 Tab Model (`stores/tabs.svelte.ts`)
 
 ```typescript
 export interface Tab {
-  id: string           // uuid v4
+  id: string           // crypto.randomUUID()
   path: string | null  // null = untitled
   fileName: string     // display name, e.g. "untitled-1", "main.rs"
   content: string      // current text content
   savedContent: string // last saved content (for dirty check)
   language: string     // CodeMirror language key, e.g. "rust", "typescript"
+  encoding: string     // e.g. "UTF-8"
+  lineEnding: string   // "LF" | "CRLF" | "CR"
   cursorLine: number
   cursorCol: number
   scrollTop: number
@@ -322,49 +407,53 @@ export interface Tab {
 |---|---|
 | `newTab()` | Create untitled tab, make active |
 | `openTab(payload: FilePayload)` | If path already open → focus that tab; else create new |
-| `closeTab(id)` | Check dirty → show ConfirmDialog if needed |
+| `closeTab(id)` | Returns `false` if dirty (caller shows ConfirmDialog); `forceCloseTab(id)` for confirmed close |
 | `setActive(id)` | Switch active tab |
 | `updateContent(id, content)` | Update content (marks dirty) |
 | `markSaved(id, path)` | Update savedContent + path after save |
-| `closeAll()` | Used on window close — check all dirty tabs |
+| `reorder(from, to)` | Drag-and-drop tab reordering |
+| `getDirtyTabs()` / `hasDirtyTabs()` | Used on window close — check all dirty tabs |
 
-### 5.2 Recent Files Store (`stores/recent.ts`)
+### 5.2 Recent Files Store (`stores/recent.svelte.ts`)
 
 ```typescript
 // Mirrors Rust state — calls get_recent_files on mount
 // Calls add_recent_file after every open/save-as
-export const recentFiles: Readable<string[]>
+// Svelte 5 runes ($state) — NOT legacy svelte/store readable/writable
+export const recentFiles: string[]
 export function refreshRecentFiles(): Promise<void>
 ```
 
-### 5.3 Settings Store (`stores/settings.ts`)
+### 5.3 Settings Store (`stores/settings.svelte.ts`)
 
 ```typescript
 export interface Settings {
-  theme: 'light' | 'dark' | 'system'
+  theme: 'light' | 'dark' | 'system'   // default 'system'
   fontSize: number          // default 14
   fontFamily: string        // default 'JetBrains Mono'
   wordWrap: boolean         // default false
   showLineNumbers: boolean  // default true
-  tabSize: number           // default 2
+  showStatusBar: boolean    // default true (v0.2.0+)
+  tabSize: number           // default 4
   insertSpaces: boolean     // default true
 }
-// Persisted to localStorage key: 'devnote-settings'
+// Persisted via tauri-plugin-store (.settings.dat); falls back to localStorage
+// 'devnote-settings' (and migrates legacy 'sabot-settings') on first load
 ```
 
 ---
 
 ## 6. Component Specifications
 
-### 6.1 `TitleBar.svelte`
+### 6.1 Native Title Bar (no Svelte component)
 
-- Background: `--surface-dark`
-- Text: `--on-dark`, 13px Inter 500
-- Shows: `[AppIcon] DevNote — {activeFileName}{dirtyDot}`
-  - `dirtyDot` = `•` when active tab is dirty
-- Right side: minimize / maximize / close buttons (custom SVG, color `--on-dark-soft`)
-- Drag region: `data-tauri-drag-region` on the bar itself
-- Close button: emits `window-close-request` → frontend checks dirty tabs before calling `appWindow.close()`
+> Removed in v0.2.0. The app uses the OS-native titlebar (`decorations: true`).
+> Window title is set from Rust via `set_window_title` and rendered by the OS; the
+> Svelte layer never draws its own chrome. The native menu bar is built in `lib.rs`
+> (`build_menu`) and emits Tauri events (e.g. `menu-open`, `menu-save`) that
+> `+page.svelte` listens for. Menu items intentionally carry **no** keyboard
+> accelerators — accelerators are consumed by the OS and would hide keydown from the
+> renderer; all shortcuts are handled by the document-level keydown handler instead.
 
 ### 6.2 `TabBar.svelte`
 
@@ -432,6 +521,14 @@ const result = await showConfirm({
   message: `"${tab.fileName}" has unsaved changes.`
 }) // → 'save' | 'discard' | 'cancel'
 ```
+
+### 6.7 `ContextMenu.svelte`
+
+Right-click menu on a tab (and elsewhere where needed).
+
+- Background: `--surface-dark-elevated`, text: `--on-dark`, radius: `--r-md`
+- Tab context items: Close, Close Others, Close All, Copy Path, Reveal in File Explorer
+- Launched at cursor position; closes on outside-click / Escape; keyboard-navigable.
 
 ---
 
