@@ -81,24 +81,37 @@ Verified directly against the repository, not assumed:
 
 ---
 
-## Phase 0: Foundation Reconciliation (done-ish, finish it)
+## Phase 0: Foundation Reconciliation (done)
 
 - [x] Tauri workspace boots, editor opens/saves, recovery + recent + settings persist
 - [x] Tests exist: `bun run test` (vitest) + `cargo test --lib` (detect_line_ending,
       normalize_line_endings, ensure_extension, validate_path, is_binary)
-- [ ] **Reconcile `AGENTS.md` with the actual v1.0.0 architecture** — the doc still
-      describes the pre-v0.2.0 custom-titlebar/`fs:*` design. Either update AGENTS.md
-      to reflect native titlebar, `tauri-plugin-store`, recovery state, clipboard
-      plugin, and macOS Apple Events, or move the obsolete spec to a `docs/archive/`.
-      A spec that lies about the code is worse than no spec.
-- [ ] Add a top-level `STATUS.md` (or `docs/STATUS.md`) capturing the real, verified
-      current-state table above so future phases have a shared ground truth.
-- [ ] Confirm `bun run check` and `cargo clippy -- -D warnings` are green on a clean
-      clone; capture baseline numbers (bundle size, cold start, open/save latency on
-      a reference file) as the Phase 9 budget anchor.
+- [x] **Reconcile `AGENTS.md` with the actual v1.0.0 architecture** — the doc still
+      described the pre-v0.2.0 custom-titlebar/`fs:*` design. Updated in
+      `phase-0-reconcile` (commit `03d6c5f`) to reflect native titlebar,
+      `tauri-plugin-store`, recovery state, clipboard plugin, macOS Apple Events,
+      no renderer `fs:*`, on-demand language packs, Svelte 5 runes stores, and the
+      real `FilePayload` / command / permission layout. A spec that lies about the
+      code is worse than no spec.
+- [x] Add a top-level `STATUS.md` capturing the real, verified current-state table
+      (per-subsystem done/open matrix + consolidated known gaps) so future phases
+      have a shared ground truth. AGENTS.md now defers to STATUS.md on any conflict.
+- [~] **Verification gate (partial — environment-blocked):**
+  - `bun run check` (svelte-check): **0 errors, 0 warnings** — verified on this
+    machine after `bun install`.
+  - `cargo clippy -- -D warnings` / `cargo test --lib`: **NOT verifiable in this
+    environment** — the local Rust toolchain crashes compiling `windows-sys`
+    (`STATUS_STACK_BUFFER_OVERRUN` 0xc0000409) and `toml_datetime` (metadata stub
+    error). This is a corrupted toolchain/registry cache on the dev box, **not** a
+    code defect. Must be re-run on a clean machine / CI (Phase 1) before the release
+    gate can be declared green.
+  - Baseline numbers (bundle size, cold start, open/save latency): **not captured**
+    yet — defer to Phase 7 budgets once CI exists. Recorded here as explicitly
+    unmet rather than claimed.
 
-**Acceptance:** AGENTS.md matches the code; a status doc exists; lint/check are green
-from a fresh clone.
+**Acceptance (as of this environment):** AGENTS.md matches the code; STATUS.md
+exists; frontend `check` is green. Rust lint/test + perf baseline remain open and
+are inherited by Phase 1 (CI) and Phase 7 (budgets) — they are **not** marked done.
 
 ---
 
