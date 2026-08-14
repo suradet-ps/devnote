@@ -6,6 +6,7 @@
   import FindReplace from '$lib/components/FindReplace.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import SymbolPicker from '$lib/components/SymbolPicker.svelte';
+  import EncodingPicker from '$lib/components/EncodingPicker.svelte';
   import type { SymbolInfo } from '$lib/editor/symbols';
   import { tabsStore, type Tab } from '$lib/stores/tabs.svelte';
   import { recentStore } from '$lib/stores/recent.svelte';
@@ -40,6 +41,45 @@
   let symbolList = $state<SymbolInfo[]>([]);
   let showPrintOverlay = $state(false);
   let printContent = $state('');
+  let showEncodingPicker = $state(false);
+  let encodingPickerFileName = $state('');
+  let encodingPickerDetected = $state('');
+  let encodingResolve: ((enc: string | null) => void) | null = null;
+
+  function showEncodingChoice(fileName: string, detected: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      encodingPickerFileName = fileName;
+      encodingPickerDetected = detected;
+      encodingResolve = resolve;
+      showEncodingPicker = true;
+    });
+  }
+
+  function resolveEncodingChoice(enc: string | null) {
+    showEncodingPicker = false;
+    const r = encodingResolve;
+    encodingResolve = null;
+    r?.(enc);
+  }
+
+  /** Open a payload, prompting for an encoding override when confidence is low. */
+  async function openPayload(payload: FilePayload): Promise<void> {
+    if (payload.encoding_confident === false) {
+      const enc = await showEncodingChoice(payload.file_name, payload.encoding);
+      if (!enc) return; // user cancelled the open
+      if (enc !== payload.encoding) {
+        try {
+          payload = await ipc.readFileWithEncoding(payload.path, enc);
+        } catch (e: unknown) {
+          showToast(t('toast.openFailedGeneric', { error: errorMessage(e) }));
+          return;
+        }
+      }
+    }
+    tabsStore.openTab(payload);
+    watchPath(payload.path);
+    await recentStore.add(payload.path);
+  }
 
   async function handlePrint() {
     const tab = tabsStore.activeTab;
@@ -212,9 +252,7 @@
     try {
       const payload = await ipc.openFile();
       if (payload) {
-        tabsStore.openTab(payload);
-        watchPath(payload.path);
-        await recentStore.add(payload.path);
+        await openPayload(payload);
       }
     } catch (e: unknown) {
       showToast(t('toast.openFailed', { error: errorMessage(e) }));
@@ -224,9 +262,7 @@
   async function handleOpenRecent(path: string) {
     try {
       const payload = await ipc.readFile(path);
-      tabsStore.openTab(payload);
-      watchPath(payload.path);
-      await recentStore.add(path);
+      await openPayload(payload);
     } catch (e: unknown) {
       const err = errorMessage(e);
       if (err.toLowerCase().includes('not found') || err.toLowerCase().includes('no such file')) {
@@ -251,9 +287,7 @@
         if (result !== 'save') return;
       }
       const payload = await ipc.readFile(path);
-      tabsStore.openTab(payload);
-      watchPath(payload.path);
-      await recentStore.add(path);
+      await openPayload(payload);
     } catch (e: unknown) {
       showToast(t('toast.openFailedGeneric', { error: errorMessage(e) }));
     }
@@ -977,6 +1011,13 @@
           dispatchEditorAction({ action: 'jump-to-symbol', line: s.line });
         }}
         onClose={() => showSymbolPicker = false}
+      />
+      <EncodingPicker
+        open={showEncodingPicker}
+        fileName={encodingPickerFileName}
+        detected={encodingPickerDetected}
+        onSelect={(enc) => resolveEncodingChoice(enc)}
+        onClose={() => resolveEncodingChoice(null)}
       />
       {#if showGoToLine}
         <div class="goto-line-panel" role="dialog" aria-label={t('goto.label')}>

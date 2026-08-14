@@ -375,6 +375,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       commands::file::open_file,
       commands::file::read_file,
+      commands::file::read_file_with_encoding,
       commands::file::save_file,
       commands::file::save_file_as,
       commands::file::add_recent_file,

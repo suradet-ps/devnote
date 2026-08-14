@@ -88,6 +88,9 @@ const en = {
   'dialog.fileChangedDirty': ' Unsaved changes will be lost.',
   'dialog.fileChangedReload': 'Reload',
   'dialog.fileChangedIgnore': 'Ignore',
+  'encoding.title': 'Choose Encoding',
+  'encoding.body': 'Encoding detection was uncertain for "{name}". Detected: {detected}. Choose the correct encoding:',
+  'encoding.detectedLabel': 'detected',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -173,6 +176,9 @@ const th: Record<MessageKey, string> = {
   'dialog.fileChangedDirty': ' การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะสูญหาย',
   'dialog.fileChangedReload': 'โหลดใหม่',
   'dialog.fileChangedIgnore': 'ไม่ต้องสนใจ',
+  'encoding.title': 'เลือกการเข้ารหัส',
+  'encoding.body': 'การตรวจจับการเข้ารหัสของ "{name}" ไม่แน่ใจ ตรวจพบ: {detected} กรุณาเลือกการเข้ารหัสที่ถูกต้อง:',
+  'encoding.detectedLabel': 'ที่ตรวจพบ',
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = {

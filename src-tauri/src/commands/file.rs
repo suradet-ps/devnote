@@ -14,6 +14,8 @@ pub const SOFT_LIMIT_BYTES: u64 = 10 * 1024 * 1024; // 10 MB
 pub const PREVIEW_LIMIT_BYTES: u64 = 50 * 1024 * 1024; // 50 MB
 /// Number of bytes to inspect for binary detection.
 const BINARY_PROBE_BYTES: usize = 8192;
+/// chardet confidence below this → frontend asks the user to pick an encoding.
+const ENCODING_CONFIDENCE_THRESHOLD: f32 = 0.6;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilePayload {
@@ -25,6 +27,13 @@ pub struct FilePayload {
   /// True when the file opened in read-only preview mode (size > 50 MB).
   #[serde(default)]
   pub preview: bool,
+  /// False when encoding detection had low confidence (user may override).
+  #[serde(default = "default_confident")]
+  pub encoding_confident: bool,
+}
+
+fn default_confident() -> bool {
+  true
 }
 
 /// Validate that the path is absolute, exists, and is a regular file.
@@ -51,32 +60,33 @@ pub fn validate_path(path_str: &str) -> Result<PathBuf, String> {
   Ok(canonical)
 }
 
-fn detect_encoding(bytes: &[u8]) -> &'static Encoding {
+fn detect_encoding(bytes: &[u8]) -> (&'static Encoding, bool) {
+  // Fast paths (BOM / valid UTF-8) are always confident
   if bytes.is_empty() {
-    return encoding_rs::UTF_8;
+    return (encoding_rs::UTF_8, true);
   }
-  // Fast path: BOM or valid UTF-8
   if bytes.starts_with(b"\xEF\xBB\xBF") {
-    return encoding_rs::UTF_8;
+    return (encoding_rs::UTF_8, true);
   }
   // UTF-16 BOMs take precedence over the chardet fallback
   if bytes.starts_with(b"\xFF\xFE") {
-    return encoding_rs::UTF_16LE;
+    return (encoding_rs::UTF_16LE, true);
   }
   if bytes.starts_with(b"\xFE\xFF") {
-    return encoding_rs::UTF_16BE;
+    return (encoding_rs::UTF_16BE, true);
   }
   if std::str::from_utf8(bytes).is_ok() {
-    return encoding_rs::UTF_8;
+    return (encoding_rs::UTF_8, true);
   }
-  let (enc, _confidence, _has_bom) = chardet::detect(bytes);
-  match enc.as_str() {
+  let (enc, confidence, _has_bom) = chardet::detect(bytes);
+  let mapped = match enc.as_str() {
     "UTF-8" | "ascii" | "ASCII" => encoding_rs::UTF_8,
     "UTF-16LE" => encoding_rs::UTF_16LE,
     "UTF-16BE" => encoding_rs::UTF_16BE,
     "windows-1252" | "ISO-8859-1" | "iso-8859-1" | "ISO-8859-15" => encoding_rs::WINDOWS_1252,
     _ => encoding_rs::UTF_8,
-  }
+  };
+  (mapped, confidence >= ENCODING_CONFIDENCE_THRESHOLD)
 }
 
 fn detect_line_ending(content: &str) -> &'static str {
@@ -220,6 +230,47 @@ pub async fn read_file(path: String) -> Result<FilePayload, String> {
   read_file_internal(&path).await
 }
 
+/// Read a file with an explicit user-chosen encoding (low-confidence
+/// detection override). Bypasses detection; the given encoding is trusted.
+#[tauri::command]
+pub async fn read_file_with_encoding(
+  path: String,
+  encoding: String,
+) -> Result<FilePayload, String> {
+  let canonical = validate_path(&path)?;
+
+  let metadata = tokio::fs::metadata(&canonical)
+    .await
+    .map_err(|e| format!("Failed to stat file: {}", e))?;
+  let size = metadata.len();
+  if size > HARD_LIMIT_BYTES {
+    return Err(format!(
+      "File too large: {:.1} MB (limit: {:.0} MB)",
+      size as f64 / 1_048_576.0,
+      HARD_LIMIT_BYTES as f64 / 1_048_576.0,
+    ));
+  }
+
+  let bytes = tokio::fs::read(&canonical)
+    .await
+    .map_err(|e| format!("Failed to read file: {}", e))?;
+
+  let has_utf16_bom = bytes.starts_with(b"\xFF\xFE") || bytes.starts_with(b"\xFE\xFF");
+  if is_binary(&bytes) && !has_utf16_bom {
+    return Err("Refusing to open: file appears to be binary".to_string());
+  }
+
+  let enc: &'static Encoding = match encoding.as_str() {
+    "UTF-8" => encoding_rs::UTF_8,
+    "UTF-16LE" => encoding_rs::UTF_16LE,
+    "UTF-16BE" => encoding_rs::UTF_16BE,
+    "windows-1252" | "Windows-1252" => encoding_rs::WINDOWS_1252,
+    _ => return Err(format!("Unknown encoding: {}", encoding)),
+  };
+
+  Ok(build_payload(&canonical, &bytes, enc, true, size))
+}
+
 async fn read_file_internal(path: &str) -> Result<FilePayload, String> {
   let canonical = validate_path(path)?;
 
@@ -251,23 +302,34 @@ async fn read_file_internal(path: &str) -> Result<FilePayload, String> {
     return Err("Refusing to open: file appears to be binary".to_string());
   }
 
-  let encoding = detect_encoding(&bytes);
+  let (encoding, confident) = detect_encoding(&bytes);
+  Ok(build_payload(&canonical, &bytes, encoding, confident, size))
+}
+
+/// Shared payload construction for both read paths.
+fn build_payload(
+  canonical: &Path,
+  bytes: &[u8],
+  encoding: &'static Encoding,
+  encoding_confident: bool,
+  size: u64,
+) -> FilePayload {
   let encoding_name = encoding.name().to_string();
-  let (content, _enc, _had_errors) = encoding.decode(&bytes);
-  let line_ending = detect_line_ending(&content).to_string();
+  let (content, _enc, _had_errors) = encoding.decode(bytes);
   let file_name = canonical
     .file_name()
     .map(|n| n.to_string_lossy().to_string())
     .unwrap_or_else(|| "untitled".to_string());
 
-  Ok(FilePayload {
+  FilePayload {
     path: canonical.to_string_lossy().to_string(),
     content: content.to_string(),
     file_name,
     encoding: encoding_name,
-    line_ending,
+    line_ending: detect_line_ending(&content).to_string(),
     preview: size > PREVIEW_LIMIT_BYTES,
-  })
+    encoding_confident,
+  }
 }
 
 #[tauri::command]
@@ -566,14 +628,29 @@ mod tests {
   fn detect_encoding_prefers_utf16_boms_over_chardet() {
     assert_eq!(
       detect_encoding(b"\xFF\xFEh\x00i\x00"),
-      encoding_rs::UTF_16LE
+      (encoding_rs::UTF_16LE, true)
     );
     assert_eq!(
       detect_encoding(b"\xFE\xFF\x00h\x00i"),
-      encoding_rs::UTF_16BE
+      (encoding_rs::UTF_16BE, true)
     );
-    assert_eq!(detect_encoding(b"\xEF\xBB\xBFhi"), encoding_rs::UTF_8);
-    assert_eq!(detect_encoding(b""), encoding_rs::UTF_8);
+    assert_eq!(
+      detect_encoding(b"\xEF\xBB\xBFhi"),
+      (encoding_rs::UTF_8, true)
+    );
+    assert_eq!(detect_encoding(b""), (encoding_rs::UTF_8, true));
+  }
+
+  #[test]
+  fn detect_encoding_flags_confidence() {
+    // Valid UTF-8 and BOM'd input are always confident
+    assert!(detect_encoding(b"plain ascii\n").1);
+    // A solid Windows-1252 sample should be detected confidently too
+    let sample = win1252_sample();
+    let (bytes, _, _) = encoding_rs::WINDOWS_1252.encode(&sample);
+    let (enc, confident) = detect_encoding(&bytes);
+    assert_eq!(enc, encoding_rs::WINDOWS_1252);
+    assert!(confident);
   }
 
   #[test]
@@ -697,6 +774,49 @@ mod tests {
     .unwrap();
     let bytes = tokio::fs::read(&path).await.unwrap();
     assert_eq!(bytes, b"a\nb\nc\n");
+  }
+
+  #[tokio::test]
+  async fn read_file_with_encoding_uses_explicit_encoding() {
+    let dir = TempDir::new().unwrap();
+    let sample = win1252_sample();
+    // Write the sample as UTF-16LE with BOM, then read it back as UTF-16LE
+    let mut le_bom = b"\xFF\xFE".to_vec();
+    le_bom.extend_from_slice(&utf16_bytes(&sample, false));
+    let path = dir.path().join("forced.txt");
+    tokio::fs::write(&path, &le_bom).await.unwrap();
+
+    let payload =
+      read_file_with_encoding(path.to_string_lossy().to_string(), "UTF-16LE".to_string())
+        .await
+        .unwrap();
+    assert_eq!(payload.encoding, "UTF-16LE");
+    assert_eq!(payload.content, sample);
+    assert!(payload.encoding_confident);
+
+    // Reading the same bytes as windows-1252 yields mojibake — but the point
+    // is the command honors the user's choice without erroring
+    let payload2 = read_file_with_encoding(
+      path.to_string_lossy().to_string(),
+      "windows-1252".to_string(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(payload2.encoding, "windows-1252");
+  }
+
+  #[tokio::test]
+  async fn read_file_with_encoding_rejects_unknown_encoding() {
+    let dir = TempDir::new().unwrap();
+    let path = write_file(&dir, "a.txt", b"hello").await;
+    let err = read_file_with_encoding(path.to_string_lossy().to_string(), "klingon".to_string())
+      .await
+      .unwrap_err();
+    assert!(
+      err.contains("Unknown encoding"),
+      "unexpected error: {}",
+      err
+    );
   }
 
   #[tokio::test]
