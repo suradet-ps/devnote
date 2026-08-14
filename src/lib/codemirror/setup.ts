@@ -50,6 +50,7 @@ export function createEditorState(
   language: string,
   onChange: (value: string) => void,
   onSelectionChange: (view: EditorView) => void,
+  onDocChanged?: (view: EditorView) => void,
 ): EditorState {
   const langExtension = getLanguage(language);
 
@@ -100,6 +101,7 @@ export function createEditorState(
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onChange(update.state.doc.toString());
+          onDocChanged?.(update.view);
         }
         if (update.selectionSet) {
           onSelectionChange(update.view);

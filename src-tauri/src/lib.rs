@@ -195,6 +195,19 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
         .build(app)
         .unwrap(),
     )
+    .separator()
+    .item(
+      &MenuItemBuilder::new("Jump to Previous Edit")
+        .id("menu-jump-edit-back")
+        .build(app)
+        .unwrap(),
+    )
+    .item(
+      &MenuItemBuilder::new("Jump to Next Edit")
+        .id("menu-jump-edit-forward")
+        .build(app)
+        .unwrap(),
+    )
     .build()
     .unwrap();
 
@@ -288,6 +301,12 @@ fn handle_menu_event(app: &tauri::AppHandle, menu_id: &str) {
     },
     "menu-zoom-reset" => {
       window.emit("menu-zoom-reset", ()).ok();
+    },
+    "menu-jump-edit-back" => {
+      window.emit("menu-jump-edit-back", ()).ok();
+    },
+    "menu-jump-edit-forward" => {
+      window.emit("menu-jump-edit-forward", ()).ok();
     },
     "menu-word-wrap" => {
       window.emit("menu-word-wrap", ()).ok();

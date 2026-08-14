@@ -500,6 +500,12 @@
     } else if (mod && e.shiftKey && e.key === 'l') {
       e.preventDefault();
       dispatchEditorAction({ action: 'select-all-occurrences' });
+    } else if (mod && e.altKey && e.key === '-') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'jump-edit-back' });
+    } else if (mod && e.altKey && e.key === '=') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'jump-edit-forward' });
     } else if (mod && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
       dispatchEditorAction({ action: 'undo' });
@@ -732,6 +738,8 @@
       listen('menu-zoom-in', () => settingsStore.increaseFontSize()),
       listen('menu-zoom-out', () => settingsStore.decreaseFontSize()),
       listen('menu-zoom-reset', () => settingsStore.resetFontSize()),
+      listen('menu-jump-edit-back', () => dispatchEditorAction({ action: 'jump-edit-back' })),
+      listen('menu-jump-edit-forward', () => dispatchEditorAction({ action: 'jump-edit-forward' })),
       listen('menu-word-wrap', () => settingsStore.toggleWordWrap()),
       listen('menu-status-bar', () => settingsStore.toggleStatusBar()),
       listen<string>('menu-open-recent', (e) => { void handleOpenRecent(e.payload); }),

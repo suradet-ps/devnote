@@ -7,6 +7,7 @@
   import { createEditorState, reconfigureView, reconfigureLanguage } from '$lib/codemirror/setup';
   import { onEditorAction, type EditorAction } from '$lib/editor/actions';
   import { findNextFrom, replaceAll } from '$lib/editor/search';
+  import { EditHistory } from '$lib/editor/edit-history';
   import { settingsStore } from '$lib/stores/settings.svelte';
 
   interface Props {
@@ -24,6 +25,16 @@
   let lastTabId: string | null = null;
   let suppressNextUpdate = false;
   let pendingCursorFrame: number | null = null;
+  let editHistory = new EditHistory();
+
+  function jumpToPos(targetView: EditorView, pos: number) {
+    const clamped = Math.min(Math.max(0, pos), targetView.state.doc.length);
+    targetView.dispatch({
+      selection: { anchor: clamped },
+      effects: EditorView.scrollIntoView(clamped, { y: 'center' }),
+    });
+    targetView.focus();
+  }
 
   function getTheme(): 'light' | 'dark' {
     return settingsStore.getEffectiveTheme();
@@ -64,10 +75,17 @@
           onCursorUpdate(line.number, pos - line.from + 1);
         });
       },
+      (view) => {
+        // Record edit sites; programmatic content syncs (tab switch,
+        // replace-all) are suppressed and must not pollute the history.
+        if (suppressNextUpdate) return;
+        editHistory.push(view.state.selection.main.head);
+      },
     );
 
     view = new EditorView({ state, parent: editorEl });
     lastTabId = tabId;
+    editHistory = new EditHistory();
     view.focus();
     // If the language pack is async, apply it when it resolves
     reconfigureLanguage(view, lang);
@@ -115,6 +133,16 @@
         selectMatches(view);
         view.focus();
         break;
+      case 'jump-edit-back': {
+        const pos = editHistory.back();
+        if (pos !== null) jumpToPos(view, pos);
+        break;
+      }
+      case 'jump-edit-forward': {
+        const pos = editHistory.forward();
+        if (pos !== null) jumpToPos(view, pos);
+        break;
+      }
       case 'find':
       case 'find-replace':
         openSearchPanel(view);
