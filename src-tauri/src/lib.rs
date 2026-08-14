@@ -160,6 +160,12 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
         .build(app)
         .unwrap(),
     )
+    .item(
+      &MenuItemBuilder::new("Go to Symbol...")
+        .id("menu-go-to-symbol")
+        .build(app)
+        .unwrap(),
+    )
     .build()
     .unwrap();
 
@@ -305,6 +311,9 @@ fn handle_menu_event(app: &tauri::AppHandle, menu_id: &str) {
     },
     "menu-go-to-line" => {
       window.emit("menu-go-to-line", ()).ok();
+    },
+    "menu-go-to-symbol" => {
+      window.emit("menu-go-to-symbol", ()).ok();
     },
     "menu-zoom-in" => {
       window.emit("menu-zoom-in", ()).ok();

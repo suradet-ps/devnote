@@ -5,6 +5,8 @@
   import StatusBar from '$lib/components/StatusBar.svelte';
   import FindReplace from '$lib/components/FindReplace.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+  import SymbolPicker from '$lib/components/SymbolPicker.svelte';
+  import type { SymbolInfo } from '$lib/editor/symbols';
   import { tabsStore, type Tab } from '$lib/stores/tabs.svelte';
   import { recentStore } from '$lib/stores/recent.svelte';
   import { settingsStore } from '$lib/stores/settings.svelte';
@@ -34,6 +36,8 @@
   let showRecentDialog = $state(false);
   let showIndentGuides = $state(false);
   let showVisibleWhitespace = $state(false);
+  let showSymbolPicker = $state(false);
+  let symbolList = $state<SymbolInfo[]>([]);
   let recentDialogEl = $state<HTMLDivElement | null>(null);
   let toastMessage = $state('');
   let toastVisible = $state(false);
@@ -502,6 +506,9 @@
     } else if (mod && e.shiftKey && e.key === 'l') {
       e.preventDefault();
       dispatchEditorAction({ action: 'select-all-occurrences' });
+    } else if (mod && e.shiftKey && e.key === 'p') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'go-to-symbol' });
     } else if (mod && e.altKey && e.key === '-') {
       e.preventDefault();
       dispatchEditorAction({ action: 'jump-edit-back' });
@@ -704,6 +711,12 @@
     };
     window.addEventListener('tab-close-request', tabCloseHandler);
 
+    const symbolsReadyHandler: EventListener = (e) => {
+      symbolList = (e as CustomEvent<SymbolInfo[]>).detail ?? [];
+      showSymbolPicker = true;
+    };
+    window.addEventListener('symbols-ready', symbolsReadyHandler);
+
     // Tauri menu events (emitted from Rust via window.emit). These are
     // NOT DOM events — they must be received via listen() from
     // @tauri-apps/api/event. The previous code used window.addEventListener
@@ -742,6 +755,7 @@
       listen('menu-zoom-reset', () => settingsStore.resetFontSize()),
       listen('menu-jump-edit-back', () => dispatchEditorAction({ action: 'jump-edit-back' })),
       listen('menu-jump-edit-forward', () => dispatchEditorAction({ action: 'jump-edit-forward' })),
+      listen('menu-go-to-symbol', () => dispatchEditorAction({ action: 'go-to-symbol' })),
       listen('menu-word-wrap', () => settingsStore.toggleWordWrap()),
       listen('menu-status-bar', () => settingsStore.toggleStatusBar()),
       listen('menu-indent-guides', () => { showIndentGuides = !showIndentGuides; }),
@@ -828,6 +842,7 @@
       clearInterval(pendingPollHandle);
       document.removeEventListener('keydown', keydownListener, { capture: true });
       window.removeEventListener('tab-close-request', tabCloseHandler);
+      window.removeEventListener('symbols-ready', symbolsReadyHandler);
       // Context menu DOM listeners
       window.removeEventListener('menu-new-tab', contextMenuNewTab);
       window.removeEventListener('menu-open-file', contextMenuOpenFile);
@@ -863,6 +878,15 @@
       <FindReplace
         show={showFindReplace}
         onClose={() => showFindReplace = false}
+      />
+      <SymbolPicker
+        open={showSymbolPicker}
+        symbols={symbolList}
+        onSelect={(s) => {
+          showSymbolPicker = false;
+          dispatchEditorAction({ action: 'jump-to-symbol', line: s.line });
+        }}
+        onClose={() => showSymbolPicker = false}
       />
       {#if showGoToLine}
         <div class="goto-line-panel" role="dialog" aria-label={t('goto.label')}>

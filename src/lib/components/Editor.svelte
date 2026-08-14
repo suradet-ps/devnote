@@ -10,6 +10,7 @@
   import { onEditorAction, type EditorAction } from '$lib/editor/actions';
   import { findNextFrom, replaceAll } from '$lib/editor/search';
   import { EditHistory } from '$lib/editor/edit-history';
+  import { extractSymbols } from '$lib/editor/symbols';
   import { settingsStore } from '$lib/stores/settings.svelte';
   import { editorStatus } from '$lib/stores/editor-status.svelte';
 
@@ -161,6 +162,22 @@
       case 'jump-edit-forward': {
         const pos = editHistory.forward();
         if (pos !== null) jumpToPos(view, pos);
+        break;
+      }
+      case 'go-to-symbol': {
+        const syms = extractSymbols(view.state);
+        window.dispatchEvent(new CustomEvent('symbols-ready', { detail: syms }));
+        break;
+      }
+      case 'jump-to-symbol': {
+        const lineCount = view.state.doc.lines;
+        const targetLine = Math.min(Math.max(1, action.line), lineCount);
+        const lineObj = view.state.doc.line(targetLine);
+        view.dispatch({
+          selection: { anchor: lineObj.from, head: lineObj.from },
+          effects: EditorView.scrollIntoView(lineObj.from, { y: 'center' }),
+        });
+        view.focus();
         break;
       }
       case 'find':
