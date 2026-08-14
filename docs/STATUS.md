@@ -167,8 +167,8 @@ code wins, and STATUS reflects the code.
 | Path canonicalization | done | symlink-escape guard |
 | `unsafe` audit | done | zero `unsafe` in app crate |
 | Release optimizations | done | `opt-level="z"`, `lto`, `strip`, `panic="abort"` |
-| CI workflow | **open** | claimed in CHANGELOG, absent in repo (Roadmap Phase 1) |
-| Cross-platform release pipeline | **open** | NSIS config exists; no release workflow (Roadmap Phase 9) |
+| CI workflow | done (partial) | `ci.yml`: frontend check/test + Rust fmt/clippy/test/doc on 3-OS matrix; missing build smoke / `bun run build` / deny-audit (Roadmap Phase 1) |
+| Cross-platform release pipeline | done (partial) | tag-triggered Windows installer release exists; macOS/Linux + checksums + signing open (Roadmap Phase 9) |
 | `cargo-deny` / `cargo-audit` | **open** | Roadmap Phase 1 / 8 |
 
 ---
@@ -182,13 +182,14 @@ code wins, and STATUS reflects the code.
 | `cargo test --lib` | done | `detect_line_ending`, `normalize_line_endings`, `ensure_extension`, `validate_path`, `is_binary` |
 | Golden behavioral suite | **open** | Roadmap Phase 2 |
 | Perf benchmarks / budgets | **open** | Roadmap Phase 7 |
-| `cargo clippy -- -D warnings` | done locally | not enforced in CI yet |
+| `cargo clippy -- -D warnings` | done | enforced in CI on 3-OS matrix |
 
 ---
 
 ## 14. Known Gaps (consolidated)
 
-1. **No CI** — the single biggest release blocker (Roadmap Phase 1).
+1. **CI gaps** — workflow exists, but missing `bun run build`, Tauri build smoke,
+   `cargo-deny`/`cargo-audit`, and conventional-commit check (Roadmap Phase 1).
 2. **AGENTS.md drift** — reconciled in Phase 0; this STATUS file is now authoritative.
 3. **About dialog** unhandled (`menu-about` emitted, no listener).
 4. **External-change detection** + **large-file streaming** not implemented.

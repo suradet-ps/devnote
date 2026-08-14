@@ -70,11 +70,14 @@ Verified directly against the repository, not assumed:
 - `AGENTS.md` documents an architecture (custom titlebar, `fs:*` dialog plugin,
   `stores/recent.ts` readable, etc.) that **no longer matches the code** — it was
   superseded by v0.2.0. AGENTS.md must be reconciled with reality (Phase 0 task).
-- **No CI workflow exists** under `.github/` despite CHANGELOG claiming `ci.yml`
-  runs `bun run test`, `check`, `cargo fmt/clippy/test/doc`. This is a real,
-  unmet promise and the single biggest release blocker.
+- **CI exists but is incomplete** — `.github/workflows/ci.yml` runs the frontend
+  `check` + `test` and the Rust fmt/clippy/test/doc gate on a 3-OS matrix, but
+  there is no `bun run build`, no Tauri build smoke, no `cargo-deny`/`cargo-audit`,
+  and no conventional-commit check (see Phase 1). Note: an earlier draft of this
+  roadmap claimed "no CI exists" — that was inaccurate; the workflow predates it.
 - No automated **cross-platform release pipeline** (checksums, signed artifacts) —
-  NSIS config exists but no GitHub Actions release workflow.
+  a tag-triggered Windows installer workflow (`release-windows.yml`) exists, but
+  macOS/Linux artifacts, checksums, and signing are not wired (see Phase 9).
 - No **golden/regression test suite** gating editor behavior (only unit tests for
   utils/stores/actions exist today).
 - No **benchmarks** (startup, open, save-latency) even though perf is a stated goal.
@@ -120,22 +123,24 @@ low-memory `.cargo/config.toml`). Perf baseline remains open under Phase 7.
 
 ## Phase 1: Continuous Integration (the missing promise)
 
-This phase exists because CHANGELOG already claims a CI that is not in the repo.
-Nothing else ships until this is real.
+This phase exists because CHANGELOG claims a CI story. The workflow already exists
+in the repo (`.github/workflows/ci.yml`) — this phase closes the remaining gaps so
+a PR that breaks anything is red and cannot merge.
 
-- [ ] `.github/workflows/ci.yml`:
-  - **Frontend**: `bun install --frozen-lockfile`, `bun run check`
-    (svelte-check), `bun run test` (vitest, fail on any skipped/ignored
-    regression), `bun run build` (vite build succeeds).
-  - **Rust**: `cargo fmt --check`, `cargo clippy -- -D warnings`,
-    `cargo test --lib`, `cargo doc --no-deps`.
-  - **Tauri build smoke**: `bun run tauri build` on a Linux runner (catches
-    broken `tauri.conf.json`, missing icons, capability drift) — does **not**
-    need to publish.
-  - Matrix: `ubuntu-latest`, `macos-latest`, `windows-latest` for the frontend
-    + Rust checks; Tauri build on Linux only for cost.
-- [ ] Caching: `actions/cache` for `~/.cargo`, `bun install` cache, and
-  `target/` to keep CI minutes sane.
+- [x] `.github/workflows/ci.yml` exists, runs on push/PR to `main`:
+  - [x] **Frontend**: `bun install --frozen-lockfile`, `bun run check`
+    (svelte-check), `bun run test` (vitest).
+  - [x] **Rust**: `cargo fmt --check`, `cargo check --locked`,
+    `cargo clippy -- -D warnings`, `cargo test`, `cargo doc --no-deps`.
+  - [x] Matrix: `ubuntu-latest`, `macos-latest`, `windows-latest` for the Rust
+    checks; frontend on `ubuntu-latest`.
+  - [x] Caching: `actions/cache` for `~/.cargo/{registry,git}` + `target/`
+    and the bun install cache.
+- [ ] **Frontend build step**: add `bun run build` (vite build succeeds) to the
+  frontend job — currently missing.
+- [ ] **Tauri build smoke**: `bun run tauri build` on a Linux runner (catches
+  broken `tauri.conf.json`, missing icons, capability drift) — does **not**
+  need to publish.
 - [ ] Branch protection on `main`: required status checks (strict), no force-push,
   no deletion — mirror the discipline from the example roadmap.
 - [ ] A `conventional-commits` PR title check (already the de-facto style in
@@ -143,8 +148,8 @@ Nothing else ships until this is real.
 - [ ] `cargo-deny` + `cargo-audit` step (license + advisory gate) even though the
   dependency tree is small today — it is cheap insurance as it grows.
 
-**Acceptance:** A PR that breaks `check`, `clippy -D warnings`, any test, or the
-Tauri build is red and cannot merge. Deny/audit step is green.
+**Acceptance:** A PR that breaks `check`, `clippy -D warnings`, any test,
+`bun run build`, or the Tauri build is red and cannot merge. Deny/audit step is green.
 
 ---
 
@@ -331,15 +336,22 @@ deny/audit green; reproducible-build notes published.
 
 ## Phase 9: Packaging, Installers & First Stable Release
 
-- [ ] **Cross-platform installers**: NSIS (Windows, exists in config), `.dmg`
-  (macOS, ad-hoc + note on Developer-ID signing), `.deb` + `.AppImage` (Linux).
+- [x] **Windows installer** — NSIS configured in `tauri.conf.json`
+  (`targets: "all"`, `nsis` section) and shipped by
+  `.github/workflows/release-windows.yml` (tag-triggered, `tauri-action`,
+  publishes a GitHub Release with the installer).
+- [x] **macOS DMG** — configured in `tauri.conf.json` (custom background,
+  ad-hoc signing `signingIdentity: "-"`, entitlements) + `scripts/post-build-macos.sh`
+  for entitlement selection. Not yet wired into a release workflow.
+- [ ] **Linux**: `.deb` config exists (`targets: "all"`); no `.AppImage`
+  verification or CI build yet.
 - [ ] **Code signing**: document the macOS Developer-ID + notarization path and the
   Windows Authenticode path; provide a `.github/workflows/release.yml` that signs when
   secrets are present and falls back to ad-hoc otherwise (never fails the build for
   missing secrets on forks).
-- [ ] **Release workflow** (tag-triggered): builds all three platforms, generates
-  `SHA256SUMS.txt`, attaches artifacts + checksums to a GitHub Release, reuses the
-  CI lint/test gates as required checks.
+- [ ] **Release workflow completion** (tag-triggered): builds all three platforms,
+  generates `SHA256SUMS.txt`, attaches artifacts + checksums to a GitHub Release,
+  reuses the CI lint/test gates as required checks. (Windows-only flow exists today.)
 - [ ] **Field-deployment guide** (`docs/DEPLOY.md`): how to copy the binary to an
   offline machine, verify the checksum, report a bug from the field (matches the
   example's field-deployment guide intent, scaled to an editor).
