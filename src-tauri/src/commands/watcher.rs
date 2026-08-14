@@ -7,10 +7,11 @@ pub fn watch_file(state: tauri::State<'_, FileWatcherState>, path: String) -> Re
   state.add(&canonical)
 }
 
-/// Stop watching a file (called when its tab closes).
+/// Stop watching a file (called when its tab closes). The file may already
+/// be deleted externally — best-effort canonicalization, never an error.
 #[tauri::command]
 pub fn unwatch_file(state: tauri::State<'_, FileWatcherState>, path: String) {
-  if let Ok(canonical) = crate::commands::file::validate_path(&path) {
-    state.remove(&canonical);
-  }
+  let p = std::path::PathBuf::from(&path);
+  let canonical = std::fs::canonicalize(&p).unwrap_or(p);
+  state.remove(&canonical);
 }

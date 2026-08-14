@@ -142,6 +142,19 @@
 
   async function handleEditorAction(action: EditorAction) {
     if (!view) return;
+    // Read-only previews must not be mutated by programmatic actions either —
+    // CodeMirror's readOnly only blocks user transactions, not dispatches.
+    if (
+      view.state.readOnly &&
+      (action.action === 'paste' ||
+        action.action === 'cut' ||
+        action.action === 'replace' ||
+        action.action === 'replace-all' ||
+        action.action === 'undo' ||
+        action.action === 'redo')
+    ) {
+      return;
+    }
     switch (action.action) {
       case 'undo':
         undo(view);

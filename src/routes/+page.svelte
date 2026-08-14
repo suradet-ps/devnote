@@ -1012,13 +1012,6 @@
         }}
         onClose={() => showSymbolPicker = false}
       />
-      <EncodingPicker
-        open={showEncodingPicker}
-        fileName={encodingPickerFileName}
-        detected={encodingPickerDetected}
-        onSelect={(enc) => resolveEncodingChoice(enc)}
-        onClose={() => resolveEncodingChoice(null)}
-      />
       {#if showGoToLine}
         <div class="goto-line-panel" role="dialog" aria-label={t('goto.label')}>
           <input
@@ -1112,6 +1105,16 @@
   onDiscard={handleConfirmDiscard}
   onCancel={handleConfirmCancel}
 />
+
+{#if showEncodingPicker}
+  <EncodingPicker
+    open={showEncodingPicker}
+    fileName={encodingPickerFileName}
+    detected={encodingPickerDetected}
+    onSelect={(enc) => resolveEncodingChoice(enc)}
+    onClose={() => resolveEncodingChoice(null)}
+  />
+{/if}
 
 <style>
   .app {
