@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import { t } from '$lib/i18n/i18n.svelte';
 
   interface Props {
     open: boolean;
@@ -20,9 +21,9 @@
     open = false,
     title = '',
     message = '',
-    saveLabel = 'Save',
-    discardLabel = "Don't Save",
-    cancelLabel = 'Cancel',
+    saveLabel = t('dialog.save'),
+    discardLabel = t('dialog.dontSave'),
+    cancelLabel = t('dialog.cancel'),
     showSave = true,
     showDiscard = true,
     showCancel = true,

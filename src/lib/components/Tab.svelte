@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from '$lib/i18n/i18n.svelte';
+
   interface Props {
     fileName: string;
     isDirty: boolean;
@@ -70,7 +72,7 @@
   bind:this={rootEl}
   role="tab"
   aria-selected={isActive}
-  aria-label="{fileName}{isDirty ? ' (unsaved)' : ''}"
+  aria-label={isDirty ? t('tab.unsaved', { name: fileName }) : fileName}
   tabindex={isActive ? 0 : -1}
   draggable="true"
   onclick={onclick}
@@ -107,8 +109,8 @@
   <button
     class="tab-close"
     onclick={(e) => { e.stopPropagation(); onclose(); }}
-    title="Close tab"
-    aria-label="Close {fileName}"
+    title={t('tab.closeTab')}
+    aria-label={t('tab.close', { name: fileName })}
   >
     <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
       <path fill="currentColor" d="M1.8 0.8L4 3l2.2-2.2.6.6L4.6 3.6l2.2 2.2-.6.6L4 4.2l-2.2 2.2-.6-.6L3.4 3.6 1.2 1.4z"/>

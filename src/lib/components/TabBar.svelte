@@ -1,6 +1,7 @@
 <script lang="ts">
   import Tab from './Tab.svelte';
   import { tabsStore } from '$lib/stores/tabs.svelte';
+  import { t } from '$lib/i18n/i18n.svelte';
 
   let showContextMenu = $state(false);
   let contextMenuPos = $state({ x: 0, y: 0 });
@@ -167,7 +168,7 @@
   }
 </script>
 
-<div class="tabbar" role="tablist" aria-label="Open files">
+<div class="tabbar" role="tablist" aria-label={t('tabs.openFiles')}>
   <div class="tabbar-scroll" role="presentation" onkeydown={handleTabsKeydown}>
     {#each tabsStore.tabs as tab, idx (tab.id)}
       <Tab
@@ -188,7 +189,7 @@
       />
     {/each}
   </div>
-  <button class="tabbar-new" onclick={handleNewTab} title="New tab (CmdOrCtrl+N)" aria-label="New tab">
+  <button class="tabbar-new" onclick={handleNewTab} title="New tab (CmdOrCtrl+N)" aria-label={t('tabs.newTab')}>
     <svg width="14" height="14" viewBox="0 0 14 14">
       <path fill="currentColor" d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
     </svg>
@@ -209,35 +210,35 @@
       style="left: {contextMenuPos.x}px; top: {contextMenuPos.y}px;"
       role="menu"
       tabindex="-1"
-      aria-label="Tab actions"
+      aria-label={t('tabs.openFiles')}
       onkeydown={handleMenuKeydown}
     >
       <button class="context-menu-item" role="menuitem" onclick={() => { emit('menu-new-tab'); closeContextMenu(); }}>
-        <span>New Tab</span>
+        <span>{t('tabs.new')}</span>
         <span class="shortcut">Ctrl+N</span>
       </button>
       <button class="context-menu-item" role="menuitem" onclick={() => { emit('menu-open-file'); closeContextMenu(); }}>
-        <span>Open File...</span>
+        <span>{t('tabs.openFile')}</span>
         <span class="shortcut">Ctrl+O</span>
       </button>
       <div class="context-menu-sep"></div>
       <button class="context-menu-item" role="menuitem" onclick={() => { handleTabClose(contextMenuTabId); closeContextMenu(); }}>
-        <span>Close</span>
+        <span>{t('tabs.close')}</span>
         <span class="shortcut">Ctrl+W</span>
       </button>
       <button class="context-menu-item" role="menuitem" onclick={closeOtherTabs}>
-        Close Others
+        {t('tabs.closeOthers')}
       </button>
       <button class="context-menu-item" role="menuitem" onclick={closeAllTabs}>
-        Close All
+        {t('tabs.closeAll')}
       </button>
       {#if tabsStore.tabs.find(t => t.id === contextMenuTabId)?.path}
         <div class="context-menu-sep"></div>
         <button class="context-menu-item" role="menuitem" onclick={copyPath}>
-          Copy Path
+          {t('tabs.copyPath')}
         </button>
         <button class="context-menu-item" role="menuitem" onclick={revealInExplorer}>
-          Reveal in File Explorer
+          {t('tabs.revealInExplorer')}
         </button>
       {/if}
     </div>

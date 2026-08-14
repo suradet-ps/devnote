@@ -2,6 +2,7 @@
   import { tabsStore } from '$lib/stores/tabs.svelte';
   import { settingsStore } from '$lib/stores/settings.svelte';
   import { requestIdleCallbackShim, cancelIdleCallbackShim } from '$lib/utils/idle';
+  import { t } from '$lib/i18n/i18n.svelte';
 
   let line = $derived(tabsStore.activeTab?.cursorLine ?? 1);
   let col = $derived(tabsStore.activeTab?.cursorCol ?? 1);
@@ -65,7 +66,7 @@
   };
 
   const languages = [
-    { key: 'text', label: 'Plain Text' },
+    { key: 'text', label: t('status.plainText') },
     { key: 'javascript', label: 'JavaScript' },
     { key: 'typescript', label: 'TypeScript' },
     { key: 'rust', label: 'Rust' },
@@ -158,17 +159,20 @@
     const meta = `${language}\u0000${encoding}\u0000${lineEnding}`;
     if (meta === prevMeta) return;
     prevMeta = meta;
-    liveAnnouncement = `Language: ${langDisplay[language] ?? language}. Encoding: ${encoding}. Line endings: ${lineEnding}.`;
+    liveAnnouncement =
+      `${t('status.languageChanged', { language: langDisplay[language] ?? language })} ` +
+      `${t('status.encodingChanged', { encoding })} ` +
+      `${t('status.lineEndingChanged', { ending: lineEnding })}`;
   });
 </script>
 
 {#if settingsStore.showStatusBar}
-  <div class="statusbar" role="status" aria-label="Status bar">
+  <div class="statusbar" role="status" aria-label={t('status.role')}>
     <div class="statusbar-left">
       <button
         class="statusbar-badge"
         onclick={() => showLangPicker = !showLangPicker}
-        aria-label="Select language"
+        aria-label={t('status.selectLanguage')}
         aria-haspopup="listbox"
         aria-expanded={showLangPicker}
       >
@@ -190,7 +194,7 @@
         </div>
       {/if}
       {#if settingsStore.wordWrap}
-        <span class="statusbar-item statusbar-tag" aria-hidden="true">Wrap</span>
+        <span class="statusbar-item statusbar-tag" aria-hidden="true">{t('status.wrap')}</span>
       {/if}
       {#if fileSize > 102400}
         <span class="statusbar-item" aria-hidden="true">{formatFileSize(fileSize)}</span>
@@ -202,11 +206,11 @@
       <span class="statusbar-item">{lineEnding}</span>
     </div>
     <div class="statusbar-right" aria-hidden="true">
-      <span class="statusbar-item">Ln {line}, Col {col}</span>
+      <span class="statusbar-item">{t('status.lineCol', { line, col })}</span>
       <span class="statusbar-sep">·</span>
-      <span class="statusbar-item">{wordCount} words</span>
+      <span class="statusbar-item">{t('status.words', { count: wordCount })}</span>
       <span class="statusbar-sep">·</span>
-      <span class="statusbar-item">{charCount} chars</span>
+      <span class="statusbar-item">{t('status.chars', { count: charCount })}</span>
     </div>
   </div>
   <span class="sr-only" aria-live="polite">{liveAnnouncement}</span>
