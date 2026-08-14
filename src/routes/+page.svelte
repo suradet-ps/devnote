@@ -32,6 +32,8 @@
   let showGoToLine = $state(false);
   let goToLineValue = $state('');
   let showRecentDialog = $state(false);
+  let showIndentGuides = $state(false);
+  let showVisibleWhitespace = $state(false);
   let recentDialogEl = $state<HTMLDivElement | null>(null);
   let toastMessage = $state('');
   let toastVisible = $state(false);
@@ -742,6 +744,8 @@
       listen('menu-jump-edit-forward', () => dispatchEditorAction({ action: 'jump-edit-forward' })),
       listen('menu-word-wrap', () => settingsStore.toggleWordWrap()),
       listen('menu-status-bar', () => settingsStore.toggleStatusBar()),
+      listen('menu-indent-guides', () => { showIndentGuides = !showIndentGuides; }),
+      listen('menu-visible-whitespace', () => { showVisibleWhitespace = !showVisibleWhitespace; }),
       listen<string>('menu-open-recent', (e) => { void handleOpenRecent(e.payload); }),
       listen('menu-about', () => {
         void showConfirmDialog(
@@ -881,6 +885,8 @@
           tabId={activeTab?.id ?? ''}
           content={activeTab?.content ?? ''}
           language={activeTab?.language ?? 'text'}
+          indentGuides={showIndentGuides}
+          visibleWhitespace={showVisibleWhitespace}
           onContentChange={handleContentChange}
           onCursorUpdate={handleCursorUpdate}
         />

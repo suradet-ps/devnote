@@ -5,6 +5,8 @@
   import { openSearchPanel, selectMatches, selectNextOccurrence } from '@codemirror/search';
   import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
   import { createEditorState, reconfigureView, reconfigureLanguage } from '$lib/codemirror/setup';
+  import { reconfigureIndentGuides } from '$lib/codemirror/guides';
+  import { reconfigureVisibleWhitespace } from '$lib/codemirror/whitespace';
   import { onEditorAction, type EditorAction } from '$lib/editor/actions';
   import { findNextFrom, replaceAll } from '$lib/editor/search';
   import { EditHistory } from '$lib/editor/edit-history';
@@ -14,11 +16,16 @@
     tabId: string;
     content: string;
     language: string;
+    indentGuides: boolean;
+    visibleWhitespace: boolean;
     onContentChange: (content: string) => void;
     onCursorUpdate: (line: number, col: number) => void;
   }
 
-  let { tabId, content, language, onContentChange, onCursorUpdate }: Props = $props();
+  let {
+    tabId, content, language, indentGuides, visibleWhitespace,
+    onContentChange, onCursorUpdate,
+  }: Props = $props();
 
   let editorEl: HTMLDivElement | undefined = $state();
   let view: EditorView | null = null;
@@ -229,8 +236,16 @@
     void settingsStore.themeVersion;
     void settingsStore.fontSize;
     void settingsStore.wordWrap;
+    void settingsStore.tabSize;
     if (view) {
       reconfigureView(view, settingsStore.settings, getTheme());
+    }
+  });
+
+  $effect(() => {
+    if (view) {
+      reconfigureIndentGuides(view, indentGuides, settingsStore.tabSize);
+      reconfigureVisibleWhitespace(view, visibleWhitespace);
     }
   });
 
@@ -266,5 +281,17 @@
   .editor-wrapper :global(.cm-scroller) {
     overflow: auto;
     font-family: 'JetBrains Mono', monospace;
+  }
+
+  .editor-wrapper :global(.cm-ws-space::before) {
+    content: '·';
+    color: var(--muted-soft);
+    opacity: 0.45;
+  }
+
+  .editor-wrapper :global(.cm-ws-tab::before) {
+    content: '→';
+    color: var(--muted-soft);
+    opacity: 0.45;
   }
 </style>

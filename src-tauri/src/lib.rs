@@ -173,9 +173,22 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
     .build(app)
     .unwrap();
 
+  let indent_guides_item = CheckMenuItemBuilder::new("Indent Guides")
+    .id("menu-indent-guides")
+    .build(app)
+    .unwrap();
+
+  let visible_whitespace_item = CheckMenuItemBuilder::new("Visible Whitespace")
+    .id("menu-visible-whitespace")
+    .build(app)
+    .unwrap();
+
   let view_menu = SubmenuBuilder::new(app, "View")
     .item(&word_wrap_item)
     .item(&status_bar_item)
+    .separator()
+    .item(&indent_guides_item)
+    .item(&visible_whitespace_item)
     .separator()
     .item(
       &MenuItemBuilder::new("Zoom In")
@@ -313,6 +326,12 @@ fn handle_menu_event(app: &tauri::AppHandle, menu_id: &str) {
     },
     "menu-status-bar" => {
       window.emit("menu-status-bar", ()).ok();
+    },
+    "menu-indent-guides" => {
+      window.emit("menu-indent-guides", ()).ok();
+    },
+    "menu-visible-whitespace" => {
+      window.emit("menu-visible-whitespace", ()).ok();
     },
     "menu-about" => {
       window.emit("menu-about", ()).ok();
