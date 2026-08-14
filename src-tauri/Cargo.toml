@@ -21,6 +21,7 @@ chardet = { version = "0.2", default-features = false }
 log = "0.4"
 simplelog = "0.12"
 tempfile = "3"
+notify = "8"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2.7"

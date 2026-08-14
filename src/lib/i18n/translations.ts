@@ -35,6 +35,7 @@ const en = {
   'status.selectLanguage': 'Select language',
   'status.plainText': 'Plain Text',
   'status.wrap': 'Wrap',
+  'status.readOnly': 'Read-only preview',
   'status.lineCol': 'Ln {line}, Col {col}',
   'status.words': '{count} words',
   'status.chars': '{count} chars',
@@ -72,6 +73,7 @@ const en = {
   'dialog.cannotSaveBody': 'Cannot save "{name}" — the file is read-only. Save a copy instead?',
   'toast.saveFailed': 'Failed to save: {error}',
   'toast.saveAsFailed': 'Failed to save as: {error}',
+  'toast.readOnly': 'This file is open in read-only preview mode.',
   'dialog.saveChangesTitle': 'Save changes?',
   'dialog.saveChangesBody': '"{name}" has unsaved changes.',
   'dialog.unsavedTitle': 'Unsaved Changes',
@@ -81,6 +83,14 @@ const en = {
   'recovery.title': 'Session Recovery',
   'recovery.body': 'Found unsaved files from previous session: {names}. Restore them?',
   'recovery.restore': 'Restore',
+  'dialog.fileChangedTitle': 'File Changed on Disk',
+  'dialog.fileChangedBody': '"{name}" was changed on disk. Reload the file?{dirty}',
+  'dialog.fileChangedDirty': ' Unsaved changes will be lost.',
+  'dialog.fileChangedReload': 'Reload',
+  'dialog.fileChangedIgnore': 'Ignore',
+  'encoding.title': 'Choose Encoding',
+  'encoding.body': 'Encoding detection was uncertain for "{name}". Detected: {detected}. Choose the correct encoding:',
+  'encoding.detectedLabel': 'detected',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -113,6 +123,7 @@ const th: Record<MessageKey, string> = {
   'status.selectLanguage': 'เลือกภาษา',
   'status.plainText': 'ข้อความธรรมดา',
   'status.wrap': 'ตัดบรรทัด',
+  'status.readOnly': 'ตัวอย่างแบบอ่านอย่างเดียว',
   'status.lineCol': 'บรรทัด {line}, คอลัมน์ {col}',
   'status.words': '{count} คำ',
   'status.chars': '{count} ตัวอักษร',
@@ -150,6 +161,7 @@ const th: Record<MessageKey, string> = {
   'dialog.cannotSaveBody': 'ไม่สามารถบันทึก "{name}" — ไฟล์เป็นแบบอ่านอย่างเดียว ต้องการบันทึกสำเนาแทนหรือไม่?',
   'toast.saveFailed': 'บันทึกไม่สำเร็จ: {error}',
   'toast.saveAsFailed': 'บันทึกเป็นไม่สำเร็จ: {error}',
+  'toast.readOnly': 'ไฟล์นี้เปิดในโหมดตัวอย่างแบบอ่านอย่างเดียว',
   'dialog.saveChangesTitle': 'บันทึกการเปลี่ยนแปลง?',
   'dialog.saveChangesBody': '"{name}" มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก',
   'dialog.unsavedTitle': 'การเปลี่ยนแปลงที่ยังไม่ได้บันทึก',
@@ -159,6 +171,14 @@ const th: Record<MessageKey, string> = {
   'recovery.title': 'กู้คืนเซสชัน',
   'recovery.body': 'พบไฟล์ที่ยังไม่ได้บันทึกจากเซสชันก่อนหน้า: {names} ต้องการกู้คืนหรือไม่?',
   'recovery.restore': 'กู้คืน',
+  'dialog.fileChangedTitle': 'ไฟล์ถูกแก้ไขบนดิสก์',
+  'dialog.fileChangedBody': '"{name}" ถูกแก้ไขบนดิสก์ ต้องการโหลดไฟล์ใหม่หรือไม่?{dirty}',
+  'dialog.fileChangedDirty': ' การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะสูญหาย',
+  'dialog.fileChangedReload': 'โหลดใหม่',
+  'dialog.fileChangedIgnore': 'ไม่ต้องสนใจ',
+  'encoding.title': 'เลือกการเข้ารหัส',
+  'encoding.body': 'การตรวจจับการเข้ารหัสของ "{name}" ไม่แน่ใจ ตรวจพบ: {detected} กรุณาเลือกการเข้ารหัสที่ถูกต้อง:',
+  'encoding.detectedLabel': 'ที่ตรวจพบ',
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = {

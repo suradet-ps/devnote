@@ -6,6 +6,7 @@
   import FindReplace from '$lib/components/FindReplace.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import SymbolPicker from '$lib/components/SymbolPicker.svelte';
+  import EncodingPicker from '$lib/components/EncodingPicker.svelte';
   import type { SymbolInfo } from '$lib/editor/symbols';
   import { tabsStore, type Tab } from '$lib/stores/tabs.svelte';
   import { recentStore } from '$lib/stores/recent.svelte';
@@ -40,6 +41,45 @@
   let symbolList = $state<SymbolInfo[]>([]);
   let showPrintOverlay = $state(false);
   let printContent = $state('');
+  let showEncodingPicker = $state(false);
+  let encodingPickerFileName = $state('');
+  let encodingPickerDetected = $state('');
+  let encodingResolve: ((enc: string | null) => void) | null = null;
+
+  function showEncodingChoice(fileName: string, detected: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      encodingPickerFileName = fileName;
+      encodingPickerDetected = detected;
+      encodingResolve = resolve;
+      showEncodingPicker = true;
+    });
+  }
+
+  function resolveEncodingChoice(enc: string | null) {
+    showEncodingPicker = false;
+    const r = encodingResolve;
+    encodingResolve = null;
+    r?.(enc);
+  }
+
+  /** Open a payload, prompting for an encoding override when confidence is low. */
+  async function openPayload(payload: FilePayload): Promise<void> {
+    if (payload.encoding_confident === false) {
+      const enc = await showEncodingChoice(payload.file_name, payload.encoding);
+      if (!enc) return; // user cancelled the open
+      if (enc !== payload.encoding) {
+        try {
+          payload = await ipc.readFileWithEncoding(payload.path, enc);
+        } catch (e: unknown) {
+          showToast(t('toast.openFailedGeneric', { error: errorMessage(e) }));
+          return;
+        }
+      }
+    }
+    tabsStore.openTab(payload);
+    watchPath(payload.path);
+    await recentStore.add(payload.path);
+  }
 
   async function handlePrint() {
     const tab = tabsStore.activeTab;
@@ -78,6 +118,7 @@
     showDiscard: boolean;
     showCancel: boolean;
     saveLabel: string;
+    discardLabel: string;
     resolve: (r: ConfirmResult) => void;
   }
   let confirmOpen = $state(false);
@@ -87,12 +128,13 @@
   let confirmShowDiscard = $state(true);
   let confirmShowCancel = $state(true);
   let confirmSaveLabel = $state(t('dialog.save'));
+  let confirmDiscardLabel = $state(t('dialog.dontSave'));
   let confirmQueue: ConfirmRequest[] = $state([]);
 
   function showConfirmDialog(
     title: string,
     message: string,
-    opts?: { saveLabel?: string; showSave?: boolean; showDiscard?: boolean; showCancel?: boolean }
+    opts?: { saveLabel?: string; discardLabel?: string; showSave?: boolean; showDiscard?: boolean; showCancel?: boolean }
   ): Promise<ConfirmResult> {
     return new Promise<ConfirmResult>((resolve) => {
       const req: ConfirmRequest = {
@@ -102,6 +144,7 @@
         showDiscard: opts?.showDiscard ?? true,
         showCancel: opts?.showCancel ?? true,
         saveLabel: opts?.saveLabel ?? t('dialog.save'),
+        discardLabel: opts?.discardLabel ?? t('dialog.dontSave'),
         resolve,
       };
       // If a dialog is already showing, queue this one. The first
@@ -121,6 +164,7 @@
     confirmShowDiscard = req.showDiscard;
     confirmShowCancel = req.showCancel;
     confirmSaveLabel = req.saveLabel;
+    confirmDiscardLabel = req.discardLabel;
     confirmOpen = true;
     // Defer attaching the resolver to the NEXT microtask so the
     // dialog's buttons are mounted (and their onclick handlers wired)
@@ -167,12 +211,48 @@
     }, TOAST_DURATION_MS);
   }
 
+  function watchPath(path: string | null) {
+    if (!path) return;
+    ipc.watchFile(path).catch(() => {});
+  }
+
+  function unwatchPath(path: string | null) {
+    if (!path) return;
+    ipc.unwatchFile(path).catch(() => {});
+  }
+
+  /** External-change event from the watcher: prompt Reload / Ignore. */
+  async function handleFileChangedExternal(path: string) {
+    const tab = tabsStore.tabs.find((t) => t.path === path);
+    if (!tab) {
+      // Tab is gone — stop watching
+      await ipc.unwatchFile(path).catch(() => {});
+      return;
+    }
+    const dirty = tab.content !== tab.savedContent;
+    const result = await showConfirmDialog(
+      t('dialog.fileChangedTitle'),
+      t('dialog.fileChangedBody', {
+        name: tab.fileName,
+        dirty: dirty ? t('dialog.fileChangedDirty') : '',
+      }),
+      { showDiscard: true, showCancel: true, saveLabel: t('dialog.fileChangedReload'), discardLabel: t('dialog.fileChangedIgnore') },
+    );
+    if (result !== 'save') return; // Ignore / Cancel — next change re-prompts
+    try {
+      const payload = await ipc.readFile(path);
+      tabsStore.reloadTab(tab.id, payload);
+      updateWindowTitle();
+    } catch (e: unknown) {
+      showToast(t('toast.openFailedGeneric', { error: errorMessage(e) }));
+    }
+  }
+
   async function handleOpenFile() {
     try {
       const payload = await ipc.openFile();
       if (payload) {
-        tabsStore.openTab(payload);
-        await recentStore.add(payload.path);
+        await openPayload(payload);
       }
     } catch (e: unknown) {
       showToast(t('toast.openFailed', { error: errorMessage(e) }));
@@ -182,8 +262,7 @@
   async function handleOpenRecent(path: string) {
     try {
       const payload = await ipc.readFile(path);
-      tabsStore.openTab(payload);
-      await recentStore.add(path);
+      await openPayload(payload);
     } catch (e: unknown) {
       const err = errorMessage(e);
       if (err.toLowerCase().includes('not found') || err.toLowerCase().includes('no such file')) {
@@ -208,8 +287,7 @@
         if (result !== 'save') return;
       }
       const payload = await ipc.readFile(path);
-      tabsStore.openTab(payload);
-      await recentStore.add(path);
+      await openPayload(payload);
     } catch (e: unknown) {
       showToast(t('toast.openFailedGeneric', { error: errorMessage(e) }));
     }
@@ -218,6 +296,11 @@
   async function handleSave() {
     const tab = tabsStore.activeTab;
     if (!tab) return;
+
+    if (tab.readOnly) {
+      showToast(t('toast.readOnly'));
+      return;
+    }
 
     if (!tab.path) {
       await handleSaveAs();
@@ -262,7 +345,9 @@
         encoding: tab.encoding,
       });
       if (newPath) {
+        unwatchPath(tab.path);
         tabsStore.markSaved(tab.id, newPath);
+        watchPath(newPath);
         await recentStore.add(newPath);
         updateWindowTitle();
       }
@@ -316,9 +401,11 @@
     const tabId = e.detail.tabId;
     const tab = tabsStore.tabs.find(t => t.id === tabId);
     if (!tab) return;
+    const closingPath = tab.path;
 
     if (tab.content === tab.savedContent) {
       tabsStore.forceCloseTab(tabId);
+      unwatchPath(closingPath);
       return;
     }
 
@@ -338,6 +425,7 @@
           });
           tabsStore.markSaved(tab.id, tab.path);
           tabsStore.forceCloseTab(tabId);
+          unwatchPath(closingPath);
         } catch (e: unknown) {
           showToast(t('toast.saveFailed', { error: errorMessage(e) }));
         }
@@ -348,6 +436,7 @@
       }
     } else if (result === 'discard') {
       tabsStore.forceCloseTab(tabId);
+      unwatchPath(closingPath);
     }
   }
 
@@ -570,7 +659,9 @@
   let lastRecoveryHash = '';
 
   async function saveRecovery() {
-    const tabs = tabsStore.tabs.map(t => ({
+    // Read-only previews can't have unsaved work and are too big to write
+    // out every 15 s — exclude them from recovery.
+    const tabs = tabsStore.tabs.filter(t => !t.readOnly).map(t => ({
       file_name: t.fileName,
       content: t.content,
       path: t.path,
@@ -602,13 +693,14 @@
       if (result === 'save') {
         for (const entry of entries) {
           try {
-            tabsStore.openTab({
+            const restored = tabsStore.openTab({
               path: entry.path ?? '',
               content: entry.content,
               file_name: entry.file_name,
               encoding: 'UTF-8',
               line_ending: 'LF',
             });
+            watchPath(restored.path);
           } catch (e: unknown) {
             showToast(t('toast.restoreFailed', { name: entry.file_name, error: errorMessage(e) }));
           }
@@ -792,6 +884,7 @@
       listen('menu-indent-guides', () => { showIndentGuides = !showIndentGuides; }),
       listen('menu-visible-whitespace', () => { showVisibleWhitespace = !showVisibleWhitespace; }),
       listen<string>('menu-open-recent', (e) => { void handleOpenRecent(e.payload); }),
+      listen<string>('file-changed-external', (e) => { void handleFileChangedExternal(e.payload); }),
       listen('menu-about', () => {
         void showConfirmDialog(
           t('about.title'),
@@ -942,6 +1035,7 @@
           language={activeTab?.language ?? 'text'}
           indentGuides={showIndentGuides}
           visibleWhitespace={showVisibleWhitespace}
+          readOnly={activeTab?.readOnly ?? false}
           onContentChange={handleContentChange}
           onCursorUpdate={handleCursorUpdate}
         />
@@ -1006,10 +1100,21 @@
   showDiscard={confirmShowDiscard}
   showCancel={confirmShowCancel}
   saveLabel={confirmSaveLabel}
+  discardLabel={confirmDiscardLabel}
   onSave={handleConfirmSave}
   onDiscard={handleConfirmDiscard}
   onCancel={handleConfirmCancel}
 />
+
+{#if showEncodingPicker}
+  <EncodingPicker
+    open={showEncodingPicker}
+    fileName={encodingPickerFileName}
+    detected={encodingPickerDetected}
+    onSelect={(enc) => resolveEncodingChoice(enc)}
+    onClose={() => resolveEncodingChoice(null)}
+  />
+{/if}
 
 <style>
   .app {

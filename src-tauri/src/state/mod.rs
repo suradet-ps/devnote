@@ -1,5 +1,6 @@
 pub mod recent;
 pub mod recovery;
+pub mod watcher;
 
 use std::sync::{Arc, Mutex};
 

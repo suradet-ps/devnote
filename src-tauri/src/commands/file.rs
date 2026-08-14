@@ -9,8 +9,13 @@ use tempfile::NamedTempFile;
 pub const HARD_LIMIT_BYTES: u64 = 200 * 1024 * 1024; // 200 MB
 /// Soft cap: frontend prompts the user to confirm before opening.
 pub const SOFT_LIMIT_BYTES: u64 = 10 * 1024 * 1024; // 10 MB
+/// Above this size the file opens in read-only preview mode — the editor
+/// never loads huge documents for editing, so it cannot OOM on a log file.
+pub const PREVIEW_LIMIT_BYTES: u64 = 50 * 1024 * 1024; // 50 MB
 /// Number of bytes to inspect for binary detection.
 const BINARY_PROBE_BYTES: usize = 8192;
+/// chardet confidence below this → frontend asks the user to pick an encoding.
+const ENCODING_CONFIDENCE_THRESHOLD: f32 = 0.6;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilePayload {
@@ -19,6 +24,16 @@ pub struct FilePayload {
   pub file_name: String,
   pub encoding: String,
   pub line_ending: String,
+  /// True when the file opened in read-only preview mode (size > 50 MB).
+  #[serde(default)]
+  pub preview: bool,
+  /// False when encoding detection had low confidence (user may override).
+  #[serde(default = "default_confident")]
+  pub encoding_confident: bool,
+}
+
+fn default_confident() -> bool {
+  true
 }
 
 /// Validate that the path is absolute, exists, and is a regular file.
@@ -45,32 +60,33 @@ pub fn validate_path(path_str: &str) -> Result<PathBuf, String> {
   Ok(canonical)
 }
 
-fn detect_encoding(bytes: &[u8]) -> &'static Encoding {
+fn detect_encoding(bytes: &[u8]) -> (&'static Encoding, bool) {
+  // Fast paths (BOM / valid UTF-8) are always confident
   if bytes.is_empty() {
-    return encoding_rs::UTF_8;
+    return (encoding_rs::UTF_8, true);
   }
-  // Fast path: BOM or valid UTF-8
   if bytes.starts_with(b"\xEF\xBB\xBF") {
-    return encoding_rs::UTF_8;
+    return (encoding_rs::UTF_8, true);
   }
   // UTF-16 BOMs take precedence over the chardet fallback
   if bytes.starts_with(b"\xFF\xFE") {
-    return encoding_rs::UTF_16LE;
+    return (encoding_rs::UTF_16LE, true);
   }
   if bytes.starts_with(b"\xFE\xFF") {
-    return encoding_rs::UTF_16BE;
+    return (encoding_rs::UTF_16BE, true);
   }
   if std::str::from_utf8(bytes).is_ok() {
-    return encoding_rs::UTF_8;
+    return (encoding_rs::UTF_8, true);
   }
-  let (enc, _confidence, _has_bom) = chardet::detect(bytes);
-  match enc.as_str() {
+  let (enc, confidence, _has_bom) = chardet::detect(bytes);
+  let mapped = match enc.as_str() {
     "UTF-8" | "ascii" | "ASCII" => encoding_rs::UTF_8,
     "UTF-16LE" => encoding_rs::UTF_16LE,
     "UTF-16BE" => encoding_rs::UTF_16BE,
     "windows-1252" | "ISO-8859-1" | "iso-8859-1" | "ISO-8859-15" => encoding_rs::WINDOWS_1252,
     _ => encoding_rs::UTF_8,
-  }
+  };
+  (mapped, confidence >= ENCODING_CONFIDENCE_THRESHOLD)
 }
 
 fn detect_line_ending(content: &str) -> &'static str {
@@ -214,6 +230,47 @@ pub async fn read_file(path: String) -> Result<FilePayload, String> {
   read_file_internal(&path).await
 }
 
+/// Read a file with an explicit user-chosen encoding (low-confidence
+/// detection override). Bypasses detection; the given encoding is trusted.
+#[tauri::command]
+pub async fn read_file_with_encoding(
+  path: String,
+  encoding: String,
+) -> Result<FilePayload, String> {
+  let canonical = validate_path(&path)?;
+
+  let metadata = tokio::fs::metadata(&canonical)
+    .await
+    .map_err(|e| format!("Failed to stat file: {}", e))?;
+  let size = metadata.len();
+  if size > HARD_LIMIT_BYTES {
+    return Err(format!(
+      "File too large: {:.1} MB (limit: {:.0} MB)",
+      size as f64 / 1_048_576.0,
+      HARD_LIMIT_BYTES as f64 / 1_048_576.0,
+    ));
+  }
+
+  let bytes = tokio::fs::read(&canonical)
+    .await
+    .map_err(|e| format!("Failed to read file: {}", e))?;
+
+  let has_utf16_bom = bytes.starts_with(b"\xFF\xFE") || bytes.starts_with(b"\xFE\xFF");
+  if is_binary(&bytes) && !has_utf16_bom {
+    return Err("Refusing to open: file appears to be binary".to_string());
+  }
+
+  let enc: &'static Encoding = match encoding.as_str() {
+    "UTF-8" => encoding_rs::UTF_8,
+    "UTF-16LE" => encoding_rs::UTF_16LE,
+    "UTF-16BE" => encoding_rs::UTF_16BE,
+    "windows-1252" | "Windows-1252" => encoding_rs::WINDOWS_1252,
+    _ => return Err(format!("Unknown encoding: {}", encoding)),
+  };
+
+  Ok(build_payload(&canonical, &bytes, enc, true, size))
+}
+
 async fn read_file_internal(path: &str) -> Result<FilePayload, String> {
   let canonical = validate_path(path)?;
 
@@ -245,22 +302,34 @@ async fn read_file_internal(path: &str) -> Result<FilePayload, String> {
     return Err("Refusing to open: file appears to be binary".to_string());
   }
 
-  let encoding = detect_encoding(&bytes);
+  let (encoding, confident) = detect_encoding(&bytes);
+  Ok(build_payload(&canonical, &bytes, encoding, confident, size))
+}
+
+/// Shared payload construction for both read paths.
+fn build_payload(
+  canonical: &Path,
+  bytes: &[u8],
+  encoding: &'static Encoding,
+  encoding_confident: bool,
+  size: u64,
+) -> FilePayload {
   let encoding_name = encoding.name().to_string();
-  let (content, _enc, _had_errors) = encoding.decode(&bytes);
-  let line_ending = detect_line_ending(&content).to_string();
+  let (content, _enc, _had_errors) = encoding.decode(bytes);
   let file_name = canonical
     .file_name()
     .map(|n| n.to_string_lossy().to_string())
     .unwrap_or_else(|| "untitled".to_string());
 
-  Ok(FilePayload {
+  FilePayload {
     path: canonical.to_string_lossy().to_string(),
     content: content.to_string(),
     file_name,
     encoding: encoding_name,
-    line_ending,
-  })
+    line_ending: detect_line_ending(&content).to_string(),
+    preview: size > PREVIEW_LIMIT_BYTES,
+    encoding_confident,
+  }
 }
 
 #[tauri::command]
@@ -285,7 +354,13 @@ pub async fn save_file(
   }
 
   let data = encode_content(&content, &le, &enc);
-  write_atomic(&p, &data).await
+  write_atomic(&p, data).await?;
+  // The atomic rename produces a fs event that would look external — suppress
+  // it so the watcher does not prompt about our own save. The watcher keys on
+  // canonical paths, so canonicalize here too.
+  let canonical = std::fs::canonicalize(&p).unwrap_or(p);
+  crate::state::watcher::note_self_save(&canonical);
+  Ok(())
 }
 
 #[tauri::command]
@@ -338,7 +413,9 @@ pub async fn save_file_as(
       let enc = encoding.unwrap_or_else(|| "UTF-8".to_string());
       let data = encode_content(&content, &le, &enc);
       let p = PathBuf::from(&path_str);
-      write_atomic(&p, &data).await?;
+      write_atomic(&p, data).await?;
+      let canonical = std::fs::canonicalize(&p).unwrap_or(p);
+      crate::state::watcher::note_self_save(&canonical);
       Ok(Some(path_str))
     },
     None => Ok(None),
@@ -348,7 +425,12 @@ pub async fn save_file_as(
 /// Atomic write: write to a uniquely-named temp file in the same directory,
 /// fsync, then rename over the target. Falls back to copy+delete on
 /// cross-filesystem rename (EXDEV).
-async fn write_atomic(target: &Path, data: &[u8]) -> Result<(), String> {
+///
+/// `data` is moved in (never copied): for a 100 MB document the caller's
+/// buffer is streamed to disk in chunks instead of duplicating it in memory.
+async fn write_atomic(target: &Path, data: Vec<u8>) -> Result<(), String> {
+  const CHUNK_BYTES: usize = 1024 * 1024; // 1 MB
+
   let parent = target
     .parent()
     .filter(|p| !p.as_os_str().is_empty())
@@ -357,20 +439,19 @@ async fn write_atomic(target: &Path, data: &[u8]) -> Result<(), String> {
 
   let target_buf = target.to_path_buf();
   let parent_for_task = parent.clone();
-  let data_vec = data.to_vec();
 
   let persist_outcome =
     tokio::task::spawn_blocking(move || -> Result<(), (PathBuf, std::io::Error)> {
       let mut temp =
         NamedTempFile::new_in(&parent_for_task).map_err(|e| (parent_for_task.clone(), e))?;
-      temp
-        .as_file_mut()
-        .write_all(&data_vec)
-        .map_err(|e| (temp.path().to_path_buf(), e))?;
-      temp
-        .as_file_mut()
-        .sync_all()
-        .map_err(|e| (temp.path().to_path_buf(), e))?;
+      {
+        let temp_path = temp.path().to_path_buf();
+        let file = temp.as_file_mut();
+        for chunk in data.chunks(CHUNK_BYTES) {
+          file.write_all(chunk).map_err(|e| (temp_path.clone(), e))?;
+        }
+        file.sync_all().map_err(|e| (temp_path, e))?;
+      }
       match temp.persist(&target_buf) {
         Ok(_) => Ok(()),
         Err(persist_err) => {
@@ -550,14 +631,29 @@ mod tests {
   fn detect_encoding_prefers_utf16_boms_over_chardet() {
     assert_eq!(
       detect_encoding(b"\xFF\xFEh\x00i\x00"),
-      encoding_rs::UTF_16LE
+      (encoding_rs::UTF_16LE, true)
     );
     assert_eq!(
       detect_encoding(b"\xFE\xFF\x00h\x00i"),
-      encoding_rs::UTF_16BE
+      (encoding_rs::UTF_16BE, true)
     );
-    assert_eq!(detect_encoding(b"\xEF\xBB\xBFhi"), encoding_rs::UTF_8);
-    assert_eq!(detect_encoding(b""), encoding_rs::UTF_8);
+    assert_eq!(
+      detect_encoding(b"\xEF\xBB\xBFhi"),
+      (encoding_rs::UTF_8, true)
+    );
+    assert_eq!(detect_encoding(b""), (encoding_rs::UTF_8, true));
+  }
+
+  #[test]
+  fn detect_encoding_flags_confidence() {
+    // Valid UTF-8 and BOM'd input are always confident
+    assert!(detect_encoding(b"plain ascii\n").1);
+    // A solid Windows-1252 sample should be detected confidently too
+    let sample = win1252_sample();
+    let (bytes, _, _) = encoding_rs::WINDOWS_1252.encode(&sample);
+    let (enc, confident) = detect_encoding(&bytes);
+    assert_eq!(enc, encoding_rs::WINDOWS_1252);
+    assert!(confident);
   }
 
   #[test]
@@ -684,6 +780,49 @@ mod tests {
   }
 
   #[tokio::test]
+  async fn read_file_with_encoding_uses_explicit_encoding() {
+    let dir = TempDir::new().unwrap();
+    let sample = win1252_sample();
+    // Write the sample as UTF-16LE with BOM, then read it back as UTF-16LE
+    let mut le_bom = b"\xFF\xFE".to_vec();
+    le_bom.extend_from_slice(&utf16_bytes(&sample, false));
+    let path = dir.path().join("forced.txt");
+    tokio::fs::write(&path, &le_bom).await.unwrap();
+
+    let payload =
+      read_file_with_encoding(path.to_string_lossy().to_string(), "UTF-16LE".to_string())
+        .await
+        .unwrap();
+    assert_eq!(payload.encoding, "UTF-16LE");
+    assert_eq!(payload.content, sample);
+    assert!(payload.encoding_confident);
+
+    // Reading the same bytes as windows-1252 yields mojibake — but the point
+    // is the command honors the user's choice without erroring
+    let payload2 = read_file_with_encoding(
+      path.to_string_lossy().to_string(),
+      "windows-1252".to_string(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(payload2.encoding, "windows-1252");
+  }
+
+  #[tokio::test]
+  async fn read_file_with_encoding_rejects_unknown_encoding() {
+    let dir = TempDir::new().unwrap();
+    let path = write_file(&dir, "a.txt", b"hello").await;
+    let err = read_file_with_encoding(path.to_string_lossy().to_string(), "klingon".to_string())
+      .await
+      .unwrap_err();
+    assert!(
+      err.contains("Unknown encoding"),
+      "unexpected error: {}",
+      err
+    );
+  }
+
+  #[tokio::test]
   async fn binary_nul_file_is_rejected_without_utf16_bom() {
     let dir = TempDir::new().unwrap();
     let p = write_file(&dir, "bin.dat", b"\x00\x01\x02\x03").await;
@@ -715,6 +854,26 @@ mod tests {
     assert_eq!(payload.content.len(), content.len());
     assert_eq!(payload.line_ending, "CRLF");
     assert_eq!(payload.encoding, "UTF-8");
+    assert!(!payload.preview, "10 MB file must stay editable");
+  }
+
+  #[tokio::test]
+  async fn files_over_preview_limit_open_read_only() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("huge.log");
+    let content = "a".repeat((PREVIEW_LIMIT_BYTES + 1) as usize);
+    tokio::fs::write(&path, content.as_bytes()).await.unwrap();
+    let payload = read_file_internal(&path.to_string_lossy()).await.unwrap();
+    assert!(payload.preview, "file over 50 MB must be marked preview");
+    assert_eq!(payload.content.len(), content.len());
+  }
+
+  #[tokio::test]
+  async fn normal_sized_files_are_not_preview() {
+    let dir = TempDir::new().unwrap();
+    let p = write_file(&dir, "small.txt", b"hello").await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert!(!payload.preview);
   }
 
   #[tokio::test]
@@ -735,6 +894,30 @@ mod tests {
       .collect();
     assert_eq!(names, vec!["t.txt"]);
     assert_eq!(tokio::fs::read_to_string(&path).await.unwrap(), "hello");
+  }
+
+  #[tokio::test]
+  async fn large_file_save_round_trips_without_temp_leftovers() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("large.bin");
+    // Multi-chunk payload (> 8 chunks of 1 MB) exercises the chunked writer
+    let content = "x".repeat(10 * 1024 * 1024 + 123);
+    save_file(
+      path.to_string_lossy().to_string(),
+      content.clone(),
+      Some("LF".to_string()),
+      Some("UTF-8".to_string()),
+    )
+    .await
+    .unwrap();
+    let bytes = tokio::fs::read(&path).await.unwrap();
+    assert_eq!(bytes.len(), content.len());
+    assert!(bytes.iter().all(|&b| b == b'x'));
+    let names: Vec<String> = std::fs::read_dir(dir.path())
+      .unwrap()
+      .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+      .collect();
+    assert_eq!(names, vec!["large.bin"]);
   }
 
   #[cfg(windows)]

@@ -12,6 +12,8 @@ export interface Tab {
   cursorLine: number;
   cursorCol: number;
   scrollTop: number;
+  /** Read-only preview (file > 50 MB) — editor is not editable. */
+  readOnly: boolean;
 }
 
 /**
@@ -24,6 +26,8 @@ export interface FilePayload {
   file_name: string;
   encoding: string;
   line_ending: string;
+  /** Read-only preview flag for files > 50 MB (optional for recovery payloads). */
+  preview?: boolean;
 }
 
 let _tabs = $state<Tab[]>([]);
@@ -58,6 +62,7 @@ function ensureOneTab(): void {
     cursorLine: 1,
     cursorCol: 1,
     scrollTop: 0,
+    readOnly: false,
   };
   _tabs = [tab];
   _activeTabId = tab.id;
@@ -95,6 +100,7 @@ export const tabsStore = {
       cursorLine: 1,
       cursorCol: 1,
       scrollTop: 0,
+      readOnly: false,
     };
     _tabs = [..._tabs, tab];
     _activeTabId = tab.id;
@@ -129,6 +135,7 @@ export const tabsStore = {
       cursorLine: 1,
       cursorCol: 1,
       scrollTop: 0,
+      readOnly: payload.preview ?? false,
     };
     _tabs = [..._tabs, tab];
     _activeTabId = tab.id;
@@ -171,6 +178,23 @@ export const tabsStore = {
       path,
       fileName: extractFileName(path),
       language: detectLanguage(path),
+    }));
+  },
+
+  /**
+   * Replace a tab's content with a fresh read from disk (external-change
+   * reload). Keeps cursor, scroll and read-only state.
+   */
+  reloadTab(id: string, payload: FilePayload): void {
+    mutateTab(id, (t) => ({
+      ...t,
+      content: payload.content,
+      savedContent: payload.content,
+      path: payload.path,
+      fileName: payload.file_name,
+      language: detectLanguage(payload.path),
+      encoding: payload.encoding,
+      lineEnding: payload.line_ending,
     }));
   },
 

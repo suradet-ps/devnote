@@ -13,6 +13,7 @@
   let encoding = $derived(tabsStore.activeTab?.encoding ?? 'UTF-8');
   let lineEnding = $derived(tabsStore.activeTab?.lineEnding ?? 'LF');
   let fileSize = $derived(content.length);
+  let readOnly = $derived(tabsStore.activeTab?.readOnly ?? false);
 
   // wordCount is expensive for large files. Defer to idle time and coalesce.
   let wordCount = $state(0);
@@ -196,6 +197,9 @@
       {/if}
       {#if settingsStore.wordWrap}
         <span class="statusbar-item statusbar-tag" aria-hidden="true">{t('status.wrap')}</span>
+      {/if}
+      {#if readOnly}
+        <span class="statusbar-item statusbar-tag">{t('status.readOnly')}</span>
       {/if}
       {#if fileSize > 102400}
         <span class="statusbar-item" aria-hidden="true">{formatFileSize(fileSize)}</span>

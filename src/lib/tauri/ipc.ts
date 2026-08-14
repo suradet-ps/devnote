@@ -4,6 +4,8 @@ import type { FilePayload, RecoveryEntry } from '$lib/types/ipc';
 export const ipc = {
   openFile: () => invoke<FilePayload | null>('open_file'),
   readFile: (path: string) => invoke<FilePayload>('read_file', { path }),
+  readFileWithEncoding: (path: string, encoding: string) =>
+    invoke<FilePayload>('read_file_with_encoding', { path, encoding }),
 
   /**
    * Returns the file size in bytes as a decimal string.
@@ -49,4 +51,7 @@ export const ipc = {
     invoke<void>('set_window_title', { title }),
 
   printCurrent: () => invoke<void>('print_current'),
+
+  watchFile: (path: string) => invoke<void>('watch_file', { path }),
+  unwatchFile: (path: string) => invoke<void>('unwatch_file', { path }),
 } as const;
