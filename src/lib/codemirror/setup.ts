@@ -10,8 +10,7 @@ import {
   rectangularSelection,
   crosshairCursor,
   highlightActiveLine,
-} from '@codemirror/view';
-import {
+} from '@codemirror/view';import {
   history,
   defaultKeymap,
   historyKeymap,
@@ -44,6 +43,7 @@ export const wrapCompartment = new Compartment();
 export const fontSizeCompartment = new Compartment();
 export const themeCompartment = new Compartment();
 export const langCompartment = new Compartment();
+export const readOnlyCompartment = new Compartment();
 
 export function createEditorState(
   content: string,
@@ -102,6 +102,7 @@ export function createEditorState(
       langCompartment.of(initialLang),
       indentGuidesCompartment.of([]),
       whitespaceCompartment.of([]),
+      readOnlyCompartment.of([]),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onChange(update.state.doc.toString());
@@ -134,8 +135,18 @@ export function reconfigureView(
   });
 }
 
-export function reconfigureLanguage(view: EditorView, language: string): void {
-  const langExtension = getLanguage(language);
+/** Toggle read-only mode (read-only preview of large files). */
+export function reconfigureReadOnly(view: EditorView, readOnly: boolean): void {
+  view.dispatch({
+    effects: [
+      readOnlyCompartment.reconfigure(
+        readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [],
+      ),
+    ],
+  });
+}
+
+export function reconfigureLanguage(view: EditorView, language: string): void {  const langExtension = getLanguage(language);
   if (langExtension instanceof Promise) {
     // Initial empty reconfigure; resolved extension is applied when ready.
     // (CodeMirror's Compartment reconfigure cannot be called with a Promise.)

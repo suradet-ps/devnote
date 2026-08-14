@@ -9,6 +9,9 @@ use tempfile::NamedTempFile;
 pub const HARD_LIMIT_BYTES: u64 = 200 * 1024 * 1024; // 200 MB
 /// Soft cap: frontend prompts the user to confirm before opening.
 pub const SOFT_LIMIT_BYTES: u64 = 10 * 1024 * 1024; // 10 MB
+/// Above this size the file opens in read-only preview mode — the editor
+/// never loads huge documents for editing, so it cannot OOM on a log file.
+pub const PREVIEW_LIMIT_BYTES: u64 = 50 * 1024 * 1024; // 50 MB
 /// Number of bytes to inspect for binary detection.
 const BINARY_PROBE_BYTES: usize = 8192;
 
@@ -19,6 +22,9 @@ pub struct FilePayload {
   pub file_name: String,
   pub encoding: String,
   pub line_ending: String,
+  /// True when the file opened in read-only preview mode (size > 50 MB).
+  #[serde(default)]
+  pub preview: bool,
 }
 
 /// Validate that the path is absolute, exists, and is a regular file.
@@ -260,6 +266,7 @@ async fn read_file_internal(path: &str) -> Result<FilePayload, String> {
     file_name,
     encoding: encoding_name,
     line_ending,
+    preview: size > PREVIEW_LIMIT_BYTES,
   })
 }
 
@@ -715,6 +722,26 @@ mod tests {
     assert_eq!(payload.content.len(), content.len());
     assert_eq!(payload.line_ending, "CRLF");
     assert_eq!(payload.encoding, "UTF-8");
+    assert!(!payload.preview, "10 MB file must stay editable");
+  }
+
+  #[tokio::test]
+  async fn files_over_preview_limit_open_read_only() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("huge.log");
+    let content = "a".repeat((PREVIEW_LIMIT_BYTES + 1) as usize);
+    tokio::fs::write(&path, content.as_bytes()).await.unwrap();
+    let payload = read_file_internal(&path.to_string_lossy()).await.unwrap();
+    assert!(payload.preview, "file over 50 MB must be marked preview");
+    assert_eq!(payload.content.len(), content.len());
+  }
+
+  #[tokio::test]
+  async fn normal_sized_files_are_not_preview() {
+    let dir = TempDir::new().unwrap();
+    let p = write_file(&dir, "small.txt", b"hello").await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert!(!payload.preview);
   }
 
   #[tokio::test]

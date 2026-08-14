@@ -14,6 +14,10 @@ export interface FilePayload {
   file_name: string;
   encoding: string;
   line_ending: string;
+  /** True when opened in read-only preview mode (size > 50 MB). */
+  preview?: boolean;
+  /** False when encoding detection had low confidence (user may override). */
+  encoding_confident?: boolean;
 }
 
 /** Returned by `check_recovery_data` and consumed by `save_recovery_data`. */

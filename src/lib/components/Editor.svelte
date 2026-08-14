@@ -4,7 +4,7 @@
   import { undo, redo, selectAll } from '@codemirror/commands';
   import { openSearchPanel, selectMatches, selectNextOccurrence } from '@codemirror/search';
   import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
-  import { createEditorState, reconfigureView, reconfigureLanguage, langCompartment } from '$lib/codemirror/setup';
+  import { createEditorState, reconfigureView, reconfigureLanguage, reconfigureReadOnly, langCompartment } from '$lib/codemirror/setup';
   import { getLanguage } from '$lib/codemirror/extensions';
   import { reconfigureIndentGuides } from '$lib/codemirror/guides';
   import { reconfigureVisibleWhitespace } from '$lib/codemirror/whitespace';
@@ -21,12 +21,13 @@
     language: string;
     indentGuides: boolean;
     visibleWhitespace: boolean;
+    readOnly: boolean;
     onContentChange: (content: string) => void;
     onCursorUpdate: (line: number, col: number) => void;
   }
 
   let {
-    tabId, content, language, indentGuides, visibleWhitespace,
+    tabId, content, language, indentGuides, visibleWhitespace, readOnly,
     onContentChange, onCursorUpdate,
   }: Props = $props();
 
@@ -355,6 +356,12 @@
     if (view) {
       reconfigureIndentGuides(view, indentGuides, settingsStore.tabSize);
       reconfigureVisibleWhitespace(view, visibleWhitespace);
+    }
+  });
+
+  $effect(() => {
+    if (view) {
+      reconfigureReadOnly(view, readOnly);
     }
   });
 

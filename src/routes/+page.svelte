@@ -219,6 +219,11 @@
     const tab = tabsStore.activeTab;
     if (!tab) return;
 
+    if (tab.readOnly) {
+      showToast(t('toast.readOnly'));
+      return;
+    }
+
     if (!tab.path) {
       await handleSaveAs();
       return;
@@ -570,7 +575,9 @@
   let lastRecoveryHash = '';
 
   async function saveRecovery() {
-    const tabs = tabsStore.tabs.map(t => ({
+    // Read-only previews can't have unsaved work and are too big to write
+    // out every 15 s — exclude them from recovery.
+    const tabs = tabsStore.tabs.filter(t => !t.readOnly).map(t => ({
       file_name: t.fileName,
       content: t.content,
       path: t.path,
@@ -942,6 +949,7 @@
           language={activeTab?.language ?? 'text'}
           indentGuides={showIndentGuides}
           visibleWhitespace={showVisibleWhitespace}
+          readOnly={activeTab?.readOnly ?? false}
           onContentChange={handleContentChange}
           onCursorUpdate={handleCursorUpdate}
         />
