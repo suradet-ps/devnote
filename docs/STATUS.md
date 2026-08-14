@@ -106,9 +106,13 @@ code wins, and STATUS reflects the code.
 | Word-wrap / font-size / language reconfigure | done | via `Compartment`, no rebuild |
 | Cursor update coalescing | done | `requestAnimationFrame` |
 | Shebang-based detection | done | `detect-lang.ts` |
-| Multi-cursor | **open** | CM default only; not surfaced (Roadmap Phase 4) |
-| Bracket/indent guides | **open** | Roadmap Phase 4 |
-| Go-to-Symbol | **open** | Roadmap Phase 4 |
+| Multi-cursor | done | `Ctrl+D` add next occurrence, `Ctrl+Shift+L` select all occurrences (Phase 4) |
+| Bracket/indent guides | done | CSS-only guides at tab stops; View → Indent Guides (Phase 4) |
+| Visible whitespace | done | spaces `·` / tabs `→` in viewport; View → Visible Whitespace (Phase 4) |
+| Edit-site history | done | `Ctrl+Alt+-`/`=` jump back/forward between edits (Phase 4) |
+| Selection stats | done | status bar shows selected words/chars (Phase 4) |
+| Go-to-Symbol | done | `Ctrl+Shift+P` picker for Rust/JS/TS/Python from parsed tree (Phase 4) |
+| Print to PDF | done | `Ctrl+P` via OS print dialog (`print_current` command) (Phase 4) |
 
 ---
 

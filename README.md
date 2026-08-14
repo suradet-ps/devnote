@@ -121,6 +121,11 @@ devnote/
 | `Ctrl+F` | Find |
 | `Ctrl+H` | Find & Replace |
 | `Ctrl+G` | Go to line |
+| `Ctrl+Shift+P` | Go to Symbol (Rust / JS / TS / Python) |
+| `Ctrl+P` | Print to PDF (OS print dialog) |
+| `Ctrl+D` | Add next occurrence (multi-cursor) |
+| `Ctrl+Shift+L` | Select all occurrences |
+| `Ctrl+Alt+-` / `Ctrl+Alt+=` | Jump to previous / next edit site |
 | `Alt+Z` | Toggle word wrap |
 | `Ctrl++` / `Ctrl+-` | Zoom in / out |
 | `Ctrl+0` | Reset zoom |

@@ -251,23 +251,37 @@ PR; the one remaining item (manual screen-reader session) requires a human.
 ## Phase 4: Editor Power-User Features (still editor-shaped)
 
 Everything here stays inside the "text editor" box — no project tree, no terminal.
+Completed in the `phase-4-editor-power` PR.
 
-- [ ] **Multi-cursor beyond CM default**: column/selection-based multi-edit exposed
-  via a menu + keybinding (already available in CodeMirror, currently not surfaced).
-- [ ] **Selection history / jump-to-last-edit**: navigate between edit sites.
-- [ ] **Bracket/indent guides**: render-only, toggle in View menu, backed by a
-  `Compartment`.
-- [ ] **Whitespace rendering toggle**: show/hide tabs+spaces (Compartment).
-- [ ] **Word count + character count + selection stats**: StatusBar already shows
-  words/chars; add selection-relative counts when a selection exists.
-- [ ] **Go-to-Symbol** for languages with a parsed tree (Rust/TS/Python): a
-  command-palette-style `Ctrl+P`-like jump list driven by CodeMirror's language
-  data, editor-local only (no workspace indexing).
-- [ ] **Print to PDF**: use Tauri's webview print for a quick "export current tab as
-  PDF" — offline, no network.
+- [x] **Multi-cursor beyond CM default**: `Ctrl+D` (Add Next Occurrence) and
+  `Ctrl+Shift+L` (Select All Occurrences) via `@codemirror/search` commands,
+  plus Edit-menu items. Column/rectangle selection was already available.
+- [x] **Selection history / jump-to-last-edit**: `EditHistory` (pure, tested)
+  records edit sites from the update listener (programmatic syncs excluded);
+  `Ctrl+Alt+-` / `Ctrl+Alt+=` jump back/forward with `scrollIntoView`.
+- [x] **Bracket/indent guides**: bracket matching already existed; indent
+  guides added as a CSS-only extension (`lib/codemirror/guides.ts`) aligned to
+  the tab grid — no DOM/modelling cost. Toggle: View → Indent Guides.
+  (Note: the `@replit/codemirror-indent-guides` package is no longer on npm —
+  replaced with a small in-repo extension.)
+- [x] **Whitespace rendering toggle**: `lib/codemirror/whitespace.ts` —
+  visible-viewport `ViewPlugin` decorations rendering spaces as `·` and tabs
+  as `→`. Toggle: View → Visible Whitespace.
+- [x] **Word count + character count + selection stats**: StatusBar now shows
+  selection-relative word/char counts (teal-highlighted) whenever a selection
+  exists, fed by a coalesced selection-update path (`stores/editor-status`).
+- [x] **Go-to-Symbol** (Rust / TS / JS / Python): `Ctrl+Shift+P` opens a
+  filterable `SymbolPicker` driven by the parsed syntax tree
+  (`lib/editor/symbols.ts` — tested per-language). Editor-local only, no
+  workspace indexing. Edit → Go to Symbol…
+- [x] **Print to PDF**: `Ctrl+P` (File → Print…) shows a full-screen print
+  overlay of the current tab, then opens the OS print dialog via a new
+  `print_current` Rust command (the JS webview API has no `print()` yet).
+  `@media print` hides the app chrome so the PDF contains only the document.
 
 **Acceptance:** Each feature toggleable, documented in README shortcuts, covered by
-at least a smoke test where pure logic exists.
+at least a smoke test where pure logic exists. ✅ (`EditHistory`, `symbols`,
+i18n + golden suites all green.)
 
 ---
 

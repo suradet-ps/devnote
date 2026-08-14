@@ -42,6 +42,20 @@
   `{param}` interpolation; every user-facing string extracted. New
   `settings.locale` (`system` / `en` / `th`) — defaults to OS language.
 
+### Editor Power-User Features (Roadmap Phase 4)
+- **Multi-cursor**: `Ctrl+D` add next occurrence, `Ctrl+Shift+L` select all
+  occurrences (Edit menu items too).
+- **Edit-site history**: `Ctrl+Alt+-` / `Ctrl+Alt+=` jump between edit
+  locations (`lib/editor/edit-history.ts`, tested).
+- **Indent guides** (CSS-only, aligned to tab stops) and **visible whitespace**
+  (spaces `·`, tabs `→`) — toggles in the View menu.
+- **Selection stats**: status bar shows selected word/char counts.
+- **Go-to-Symbol**: `Ctrl+Shift+P` filterable picker listing definitions from
+  the parsed tree for Rust / JS / TS / Python (`lib/editor/symbols.ts`, tested).
+- **Print to PDF**: `Ctrl+P` / File → Print… — full-screen print overlay of the
+  current tab opens the OS print dialog via the new `print_current` Rust
+  command (JS webview API lacks `print()`).
+
 ## v0.2.0 — Production Grade Upgrade
 
 ### Breaking Changes
