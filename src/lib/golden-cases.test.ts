@@ -86,12 +86,7 @@ describe('golden cases', () => {
               if (tab) expect(tabsStore.closeTab(tab.id)).toBe(false);
             }
             if (step.dirty !== undefined || step.path !== undefined || step.fileName !== undefined) {
-              expectTabState(tab, {
-                dirty: step.dirty,
-                path: undefined,
-                fileName: undefined,
-                tabCount: undefined,
-              }, `scenario ${c.id}`);
+              expectTabState(tab, { dirty: step.dirty }, `scenario ${c.id}`);
               expect(tab?.path, 'scenario path').toBe(step.path ?? c.payload.path);
               expect(tab?.fileName, 'scenario fileName').toBe(step.fileName ?? c.payload.file_name);
             }
