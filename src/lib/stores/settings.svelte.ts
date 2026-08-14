@@ -23,8 +23,40 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 const LOCALSTORAGE_KEY = 'devnote-settings';
-// Historical keys we migrate from on first load
-const LEGACY_KEYS = ['sabot-settings', LOCALSTORAGE_KEY] as const;
+// Historical keys we migrate from on first load. Newest first: if both keys
+// exist, the current key wins over the stale legacy one.
+const LEGACY_KEYS = [LOCALSTORAGE_KEY, 'sabot-settings'] as const;
+
+/**
+ * Pick only known, type-checked keys from untrusted persisted data.
+ * Unknown keys and out-of-range values fall back to defaults instead of
+ * leaking into the live settings object.
+ */
+function sanitizeSettings(partial: unknown): Partial<Settings> {
+  const src = (partial ?? {}) as Record<string, unknown>;
+  const out: Partial<Settings> = {};
+  if (src.theme === 'light' || src.theme === 'dark' || src.theme === 'system') {
+    out.theme = src.theme;
+  }
+  if (typeof src.fontSize === 'number' && src.fontSize >= 8 && src.fontSize <= 32) {
+    out.fontSize = src.fontSize;
+  }
+  if (typeof src.fontFamily === 'string' && src.fontFamily.length > 0) {
+    out.fontFamily = src.fontFamily;
+  }
+  if (typeof src.wordWrap === 'boolean') out.wordWrap = src.wordWrap;
+  if (typeof src.showLineNumbers === 'boolean') out.showLineNumbers = src.showLineNumbers;
+  if (typeof src.showStatusBar === 'boolean') out.showStatusBar = src.showStatusBar;
+  if (typeof src.tabSize === 'number' && src.tabSize >= 1 && src.tabSize <= 16) {
+    out.tabSize = src.tabSize;
+  }
+  if (typeof src.insertSpaces === 'boolean') out.insertSpaces = src.insertSpaces;
+  return out;
+}
+
+function resolveSettings(raw: unknown): Settings {
+  return { ...DEFAULT_SETTINGS, ...sanitizeSettings(raw) };
+}
 
 let _settings = $state<Settings>({ ...DEFAULT_SETTINGS });
 let _initialized = false;
@@ -51,7 +83,7 @@ async function initStore(): Promise<void> {
     _store = store;
     const fromStore = await store.get<Partial<Settings>>('settings');
     if (fromStore) {
-      _settings = { ...DEFAULT_SETTINGS, ...fromStore };
+      _settings = resolveSettings(fromStore);
       _initialized = true;
       return;
     }
@@ -61,7 +93,7 @@ async function initStore(): Promise<void> {
       if (raw) {
         try {
           const parsed = JSON.parse(raw) as Partial<Settings>;
-          _settings = { ...DEFAULT_SETTINGS, ...parsed };
+          _settings = resolveSettings(parsed);
           // Persist to the Tauri store so future loads are consistent
           await store.set('settings', _settings);
           await store.save();
@@ -79,7 +111,7 @@ async function initStore(): Promise<void> {
       const raw = localStorage.getItem(key);
       if (raw) {
         try {
-          _settings = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) };
+          _settings = resolveSettings(JSON.parse(raw) as Partial<Settings>);
           break;
         } catch {
           // ignore
@@ -197,5 +229,15 @@ export const settingsStore = {
 
   toggleStatusBar(): void {
     this.update({ showStatusBar: !_settings.showStatusBar });
+  },
+
+  /**
+   * Test-only helper to reset store state. Not part of the public API.
+   * @internal
+   */
+  __resetForTests(): void {
+    _settings = { ...DEFAULT_SETTINGS };
+    _initialized = false;
+    _store = null;
   },
 };
