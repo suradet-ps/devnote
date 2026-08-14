@@ -12,6 +12,7 @@
   import { dispatchEditorAction } from '$lib/editor/actions';
   import { errorMessage } from '$lib/utils/error';
   import { recoveryHash } from '$lib/utils/recovery';
+  import { t } from '$lib/i18n/i18n.svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { listen as listenTauriEvent, type UnlistenFn } from '@tauri-apps/api/event';
   import type { FilePayload, RecoveryEntry } from '$lib/types/ipc';
@@ -31,6 +32,7 @@
   let showGoToLine = $state(false);
   let goToLineValue = $state('');
   let showRecentDialog = $state(false);
+  let recentDialogEl = $state<HTMLDivElement | null>(null);
   let toastMessage = $state('');
   let toastVisible = $state(false);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,7 +62,7 @@
   let confirmShowSave = $state(true);
   let confirmShowDiscard = $state(true);
   let confirmShowCancel = $state(true);
-  let confirmSaveLabel = $state('Save');
+  let confirmSaveLabel = $state(t('dialog.save'));
   let confirmQueue: ConfirmRequest[] = $state([]);
 
   function showConfirmDialog(
@@ -75,7 +77,7 @@
         showSave: opts?.showSave ?? true,
         showDiscard: opts?.showDiscard ?? true,
         showCancel: opts?.showCancel ?? true,
-        saveLabel: opts?.saveLabel ?? 'Save',
+        saveLabel: opts?.saveLabel ?? t('dialog.save'),
         resolve,
       };
       // If a dialog is already showing, queue this one. The first
@@ -149,7 +151,7 @@
         await recentStore.add(payload.path);
       }
     } catch (e: unknown) {
-      showToast(`Failed to open file: ${errorMessage(e)}`);
+      showToast(t('toast.openFailed', { error: errorMessage(e) }));
     }
   }
 
@@ -162,9 +164,9 @@
       const err = errorMessage(e);
       if (err.toLowerCase().includes('not found') || err.toLowerCase().includes('no such file')) {
         await recentStore.remove(path);
-        showToast(`File not found: ${path}`);
+        showToast(t('toast.fileNotFound', { path }));
       } else {
-        showToast(`Failed to open: ${err}`);
+        showToast(t('toast.openFailedGeneric', { error: err }));
       }
     }
     showRecentDialog = false;
@@ -176,8 +178,8 @@
       const size = Number(sizeStr);
       if (size > SOFT_LIMIT_BYTES) {
         const result = await showConfirmDialog(
-          'Large File',
-          `This file is ${(size / (1024 * 1024)).toFixed(1)} MB. Opening large files may be slow. Continue?`,
+          t('dialog.largeFileTitle'),
+          t('dialog.largeFileBody', { size: (size / (1024 * 1024)).toFixed(1) }),
         );
         if (result !== 'save') return;
       }
@@ -185,7 +187,7 @@
       tabsStore.openTab(payload);
       await recentStore.add(path);
     } catch (e: unknown) {
-      showToast(`Failed to open: ${errorMessage(e)}`);
+      showToast(t('toast.openFailedGeneric', { error: errorMessage(e) }));
     }
   }
 
@@ -211,15 +213,15 @@
       const err = errorMessage(e);
       if (err.toLowerCase().includes('permission denied') || err.toLowerCase().includes('read-only')) {
         const result = await showConfirmDialog(
-          'Cannot Save',
-          `Cannot save "${tab.fileName}" \u2014 the file is read-only. Save a copy instead?`,
-          { showDiscard: false, saveLabel: 'Save Copy' },
+          t('dialog.cannotSaveTitle'),
+          t('dialog.cannotSaveBody', { name: tab.fileName }),
+          { showDiscard: false, saveLabel: t('dialog.saveCopy') },
         );
         if (result === 'save') {
           await handleSaveAs();
         }
       } else {
-        showToast(`Failed to save: ${err}`);
+        showToast(t('toast.saveFailed', { error: err }));
       }
     }
   }
@@ -241,7 +243,7 @@
         updateWindowTitle();
       }
     } catch (e: unknown) {
-      showToast(`Failed to save as: ${errorMessage(e)}`);
+      showToast(t('toast.saveAsFailed', { error: errorMessage(e) }));
     }
   }
 
@@ -297,8 +299,8 @@
     }
 
     const result = await showConfirmDialog(
-      'Save changes?',
-      `"${tab.fileName}" has unsaved changes.`,
+      t('dialog.saveChangesTitle'),
+      t('dialog.saveChangesBody', { name: tab.fileName }),
     );
 
     if (result === 'save') {
@@ -313,7 +315,7 @@
           tabsStore.markSaved(tab.id, tab.path);
           tabsStore.forceCloseTab(tabId);
         } catch (e: unknown) {
-          showToast(`Failed to save: ${errorMessage(e)}`);
+          showToast(t('toast.saveFailed', { error: errorMessage(e) }));
         }
       } else {
         await handleSaveAs();
@@ -347,9 +349,9 @@
     }
 
     const result = await showConfirmDialog(
-      'Unsaved Changes',
-      `You have ${dirtyTabs.length} unsaved file(s). Save before closing?`,
-      { saveLabel: 'Save All' },
+      t('dialog.unsavedTitle'),
+      t('dialog.unsavedBody', { count: dirtyTabs.length }),
+      { saveLabel: t('dialog.saveAll') },
     );
 
     if (result === 'cancel') return;
@@ -375,7 +377,7 @@
         }
       }
       if (failed.length > 0) {
-        showToast(`Could not save ${failed.length} file(s). Close aborted.`);
+        showToast(t('toast.saveAborted', { count: failed.length }));
         return;
       }
     }
@@ -397,6 +399,19 @@
       (async () => {
         await tick();
         document.querySelector<HTMLInputElement>('.goto-line-input')?.focus();
+      })();
+    }
+  });
+
+  // Focus the recent-files dialog when it opens
+  $effect(() => {
+    if (showRecentDialog) {
+      void (async () => {
+        await tick();
+        recentDialogEl
+          ?.querySelector<HTMLButtonElement>('.recent-item, .recent-empty')
+          ?.focus();
+        recentDialogEl?.focus();
       })();
     }
   });
@@ -528,9 +543,9 @@
 
       const names = entries.map(e => e.file_name).join(', ');
       const result = await showConfirmDialog(
-        'Session Recovery',
-        `Found unsaved files from previous session: ${names}. Restore them?`,
-        { showDiscard: true, showCancel: true, saveLabel: 'Restore' },
+        t('recovery.title'),
+        t('recovery.body', { names }),
+        { showDiscard: true, showCancel: true, saveLabel: t('recovery.restore') },
       );
 
       if (result === 'save') {
@@ -544,7 +559,7 @@
               line_ending: 'LF',
             });
           } catch (e: unknown) {
-            showToast(`Could not restore ${entry.file_name}: ${errorMessage(e)}`);
+            showToast(t('toast.restoreFailed', { name: entry.file_name, error: errorMessage(e) }));
           }
         }
         await ipc.clearRecovery();
@@ -714,9 +729,9 @@
       listen<string>('menu-open-recent', (e) => { void handleOpenRecent(e.payload); }),
       listen('menu-about', () => {
         void showConfirmDialog(
-          'About DevNote',
-          'DevNote v1.0.0\nA fast, lightweight text editor.\nBuilt with Tauri, Svelte 5, and CodeMirror 6.',
-          { showDiscard: false, showCancel: false, saveLabel: 'OK' },
+          t('about.title'),
+          t('about.body'),
+          { showDiscard: false, showCancel: false, saveLabel: t('dialog.ok') },
         );
       }),
     ];
@@ -830,19 +845,19 @@
         onClose={() => showFindReplace = false}
       />
       {#if showGoToLine}
-        <div class="goto-line-panel" role="dialog" aria-label="Go to Line">
+        <div class="goto-line-panel" role="dialog" aria-label={t('goto.label')}>
           <input
             class="goto-line-input"
             type="number"
             min="1"
-            placeholder="Line number"
+            placeholder={t('goto.placeholder')}
             bind:value={goToLineValue}
             onkeydown={(e) => {
               if (e.key === 'Enter') handleGoToLine();
               if (e.key === 'Escape') { showGoToLine = false; goToLineValue = ''; }
             }}
           />
-          <button class="goto-line-btn" onclick={handleGoToLine}>Go</button>
+          <button class="goto-line-btn" onclick={handleGoToLine}>{t('goto.go')}</button>
         </div>
       {/if}
       {#key activeTab?.id ?? 'empty'}
@@ -856,19 +871,28 @@
       {/key}
     {:else}
       <div class="empty-state">
-        <p>No open files</p>
-        <p class="empty-hint">Ctrl+N to create a new tab, Ctrl+O to open a file</p>
+        <p>{t('empty.noOpenFiles')}</p>
+        <p class="empty-hint">{t('empty.hint')}</p>
       </div>
     {/if}
   </div>
   <StatusBar />
 
   {#if showRecentDialog}
-    <div class="toast-backdrop" onclick={() => showRecentDialog = false} onkeydown={() => {}} role="presentation">
-      <div class="recent-dialog" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog" tabindex="-1">
-        <h3>Open Recent</h3>
+    <div class="toast-backdrop" onclick={() => showRecentDialog = false} role="presentation">
+      <div
+        class="recent-dialog"
+        bind:this={recentDialogEl}
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => { if (e.key === 'Escape') showRecentDialog = false; }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('recent.title')}
+        tabindex="-1"
+      >
+        <h3>{t('recent.title')}</h3>
         {#if recentStore.recentFiles.length === 0}
-          <p class="recent-empty">No recent files</p>
+          <p class="recent-empty">{t('recent.empty')}</p>
         {:else}
           <div class="recent-list">
             {#each recentStore.recentFiles as path}
@@ -962,7 +986,6 @@
 
   .goto-line-input:focus {
     border-color: var(--primary);
-    outline: none;
   }
 
   .goto-line-btn {

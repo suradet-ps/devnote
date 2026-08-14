@@ -91,7 +91,8 @@ code wins, and STATUS reflects the code.
 | `theme: system` | done | `prefers-color-scheme` media query |
 | `showStatusBar` | done | toggle (v0.2.0+) |
 | font size / tab size / insert spaces / wrap | done | all persisted |
-| `locale` field | **open** | i18n plumbing not yet added (Roadmap Phase 3) |
+| `locale` field | done | `system` \| `en` \| `th`, persisted; OS detection fallback `en` (Roadmap Phase 3) |
+| i18n `t()` | done | `lib/i18n/i18n.svelte.ts`; typed en/th dictionaries, param interpolation, English fallback |
 
 ---
 
@@ -141,8 +142,9 @@ code wins, and STATUS reflects the code.
 | ARIA roles | done | `tablist`, `alertdialog`, `search`, `status`, `menu`, … |
 | `prefers-reduced-motion` | done | disables transitions/animations |
 | Tab inserts spaces (no focus steal) | done | |
-| Keyboard-only full nav | **open** | audit pending (Roadmap Phase 3) |
-| Screen-reader pass | **open** | manual VO/NVDA session (Roadmap Phase 3) |
+| Keyboard-only full nav | done | tabs roving tabindex + arrows; context menu; pickers; dialogs trap focus; no mouse traps (Phase 3) |
+| Focus ring | done | `:focus-visible` in `--accent-teal`; mouse focus quiet (Phase 3) |
+| Screen-reader pass | done (auto) | `svelte-check` a11y lints clean; live region announces language/encoding/endings only; manual VO/NVDA session pending (`docs/a11y-notes.md`) |
 
 ---
 
@@ -194,5 +196,7 @@ code wins, and STATUS reflects the code.
 2. **AGENTS.md drift** — reconciled in Phase 0; this STATUS file is now authoritative.
 3. **About dialog** unhandled (`menu-about` emitted, no listener).
 4. **External-change detection** + **large-file streaming** not implemented.
-5. **i18n / a11y keyboard + SR pass** not yet done.
+5. **Manual SR session** — automated a11y checks are done (Phase 3); the
+   VoiceOver/NVDA session checklist is in `docs/a11y-notes.md` and needs a
+   human.
 6. **Perf budgets** not yet enforced (golden regression suite is done — Phase 2).

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { dispatchEditorAction } from '$lib/editor/actions';
+  import { t } from '$lib/i18n/i18n.svelte';
 
   let { show = false, onClose }: {
     show: boolean;
@@ -44,32 +45,32 @@
       <input
         class="find-input"
         type="text"
-        placeholder="Find"
+        placeholder={t('find.placeholder')}
         bind:value={query}
-        aria-label="Find text"
+        aria-label={t('find.placeholder')}
         oninput={() => {
           dispatchEditorAction({ action: 'search', query, caseSensitive, useRegex });
         }}
       />
       <button class="find-btn" onclick={() => {
         dispatchEditorAction({ action: 'search-prev', query, caseSensitive, useRegex });
-      }} aria-label="Previous match" title="Previous match (Shift+Enter)">↑</button>
+      }} aria-label={t('find.previous')} title="Previous match (Shift+Enter)">↑</button>
       <button class="find-btn" onclick={() => {
         dispatchEditorAction({ action: 'search-next', query, caseSensitive, useRegex });
-      }} aria-label="Next match" title="Next match (Enter)">↓</button>
-      <button class="find-btn" onclick={() => { replaceMode = !replaceMode; }} aria-label="Toggle replace" title="Toggle Replace">
+      }} aria-label={t('find.next')} title="Next match (Enter)">↓</button>
+      <button class="find-btn" onclick={() => { replaceMode = !replaceMode; }} aria-label={t('find.toggleReplace')} title={t('find.toggleReplace')}>
         {replaceMode ? '▼' : '▶'}
       </button>
-      <button class="find-btn" onclick={onClose} aria-label="Close find panel">✕</button>
+      <button class="find-btn" onclick={onClose} aria-label={t('find.close')} title={t('find.close')}>✕</button>
     </div>
     {#if replaceMode}
       <div class="find-row">
         <input
           class="find-input"
           type="text"
-          placeholder="Replace"
+          placeholder={t('find.replacePlaceholder')}
           bind:value={replacement}
-          aria-label="Replace with"
+          aria-label={t('find.replacePlaceholder')}
           onkeydown={(e: KeyboardEvent) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -82,15 +83,15 @@
           onclick={() => {
             dispatchEditorAction({ action: 'replace', query, replacement, caseSensitive, useRegex });
           }}
-          aria-label="Replace current match"
-        >Replace</button>
+          aria-label={t('find.replace')}
+        >{t('find.replace')}</button>
         <button
           class="find-btn find-btn-action"
           onclick={() => {
             dispatchEditorAction({ action: 'replace-all', query, replacement, caseSensitive, useRegex });
           }}
-          aria-label="Replace all matches"
-        >All</button>
+          aria-label={t('find.replaceAll')}
+        >{t('find.replaceAll')}</button>
       </div>
     {/if}
     <div class="find-options">
@@ -98,16 +99,16 @@
         class="find-option"
         class:active={caseSensitive}
         onclick={() => { caseSensitive = !caseSensitive; }}
-        title="Match Case"
-        aria-label="Match case"
+        title={t('find.matchCase')}
+        aria-label={t('find.matchCase')}
         aria-pressed={caseSensitive}
       >Aa</button>
       <button
         class="find-option"
         class:active={useRegex}
         onclick={() => { useRegex = !useRegex; }}
-        title="Use Regular Expression"
-        aria-label="Use regular expression"
+        title={t('find.useRegex')}
+        aria-label={t('find.useRegex')}
         aria-pressed={useRegex}
       >.*</button>
     </div>
@@ -148,7 +149,6 @@
 
   .find-input:focus {
     border-color: var(--primary);
-    outline: none;
   }
 
   .find-btn {

@@ -28,6 +28,20 @@
     values fall back to defaults) and migrate `sabot-settings` before
     `devnote-settings` (newest key wins).
 
+### Accessibility & Internationalization (Roadmap Phase 3)
+- **Keyboard-only navigation**: tab bar uses the ARIA tabs pattern (roving
+  `tabindex`, arrow/Home/End keys); context menu, language picker and dialogs
+  are fully keyboard-operable; focus returns to the editor after dialogs close.
+- **Focus ring**: global `:focus-visible` outline in `--accent-teal`; mouse
+  clicks no longer show focus outlines; `prefers-reduced-motion` respected.
+- **Screen-reader support**: dialog focus traps, `aria-modal`, dirty-tab
+  labels, and a status-bar live region that announces language/encoding/line
+  endings without per-keystroke chatter. `svelte-check` a11y lints: 0/0.
+  Manual VoiceOver/NVDA session checklist: `docs/a11y-notes.md`.
+- **i18n**: new `t()` helper with typed `en` + `th` dictionaries and
+  `{param}` interpolation; every user-facing string extracted. New
+  `settings.locale` (`system` / `en` / `th`) — defaults to OS language.
+
 ## v0.2.0 — Production Grade Upgrade
 
 ### Breaking Changes

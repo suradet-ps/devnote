@@ -214,27 +214,37 @@ regression in any of them fails CI. ✅ (All new tests green: 92 frontend +
 ## Phase 3: Accessibility & Internationalization Foundation
 
 DevNote already has ARIA roles and `prefers-reduced-motion`. This phase makes a11y
-and i18n first-class rather than incidental.
+and i18n first-class rather than incidental. Completed in the `phase-3-a11y-i18n`
+PR; the one remaining item (manual screen-reader session) requires a human.
 
-- [ ] **Keyboard-only audit**: full app navigable with keyboard only — tab bar
-  (arrow keys + Enter), context menu, Find/Replace, Go-to-Line, menus. No mouse
-  trap. Document the full key map in README + a help panel.
-- [ ] **Focus management**: visible focus ring using `--accent-teal` token (never
-  removed), focus returns to editor after dialog close, Esc always cancels the
-  topmost modal.
-- [ ] **Screen-reader pass**: verify `role="tablist"`/`tab`/`tabpanel` semantics,
-  `aria-selected`, `aria-current`, status-bar `role="status"` live region announces
-  cursor position + encoding changes, dialogs use `role="alertdialog"` +
-  `aria-labelledby`/`aria-describedby`. Test with VoiceOver (macOS) + NVDA (Windows)
-  at least once, manually, documented in `docs/a11y-notes.md`.
-- [ ] **i18n plumbing**: extract all user-facing strings into a `t()` helper stub
-  (AGENTS.md already calls for this). Start with `en` + `th` (Thai, since the author
-  is Thai-locale) as proof the pipeline works. No UI rewrite — string extraction only.
-- [ ] **Bilingual-ready settings**: `settings.locale` field, persisted, defaults to
-  OS locale, falls back to `en`.
+- [x] **Keyboard-only audit**: full app navigable with keyboard only —
+  - Tab bar: roving `tabindex` + `←` `→` `Home` `End` (ARIA tabs pattern),
+    `Enter`/`Space` activate.
+  - Context menu: auto-focus first item, `↑`/`↓`/`Home`/`End`, Tab wraps,
+    Esc closes, focus returns to the originating tab.
+  - Find/Replace + Go-to-Line + Recent dialog: auto-focus, Enter/Esc.
+  - Language picker: arrows + Esc; blur-based close replaced with
+    outside-click (blur closing broke keyboard navigation).
+  - No mouse traps anywhere; key map documented in README + `docs/a11y-notes.md`.
+- [x] **Focus management**: visible focus ring using `--accent-teal` token
+  (`:focus-visible`, mouse focus stays quiet); dialogs trap Tab/Shift+Tab and
+  return focus to the editor on close; Esc always cancels the topmost modal.
+- [x] **Screen-reader pass (automated part)**: `svelte-check` a11y lints at
+  0 errors/0 warnings; `tablist`/`tab`/`aria-selected`, dirty-tab labels,
+  `role="menu"`, `alertdialog` + `aria-modal` + labelled/describedby, status bar
+  `role="status"` with a dedicated polite live region announcing only
+  language/encoding/line-ending changes (volatile Ln/Col/words/chars are
+  `aria-hidden` to avoid per-keystroke announcements), toast `role="alert"`.
+- [ ] **Manual VoiceOver/NVDA session** — checklist in `docs/a11y-notes.md`,
+  needs a human on macOS/Windows; run before the v1.1 LTS tag.
+- [x] **i18n plumbing**: `t()` helper (`lib/i18n/i18n.svelte.ts`) with typed
+  `en` + `th` dictionaries (Thai = author locale), `{param}` interpolation,
+  English fallback, locale-reactive (components re-render on change).
+- [x] **Bilingual-ready settings**: `settings.locale` (`system` | `en` | `th`),
+  persisted, defaults to `system` (OS locale detection, falls back to `en`).
 
-**Acceptance:** Keyboard-only + reduced-motion pass; at least one SR session logged;
-`en`+`th` strings resolve through `t()`.
+**Acceptance:** Keyboard-only + reduced-motion pass ✅; SR session logged —
+**pending manual run**; `en`+`th` strings resolve through `t()` ✅ (tested).
 
 ---
 

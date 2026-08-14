@@ -113,7 +113,24 @@ input {
   color: inherit;
   background: none;
   border: none;
+}
+
+/* Keyboard focus must always be visible (Roadmap Phase 3). The teal ring
+   is the system's focus token — it only appears for keyboard navigation,
+   never for mouse clicks (mouse focus stays quiet via :focus:not(:focus-visible)). */
+:focus {
   outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-teal);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+.tabbar :focus-visible,
+.statusbar :focus-visible {
+  outline-offset: -2px;
 }
 
 ::selection {

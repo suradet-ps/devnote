@@ -1,10 +1,75 @@
 <script lang="ts">
   import Tab from './Tab.svelte';
   import { tabsStore } from '$lib/stores/tabs.svelte';
+  import { t } from '$lib/i18n/i18n.svelte';
 
   let showContextMenu = $state(false);
   let contextMenuPos = $state({ x: 0, y: 0 });
   let contextMenuTabId = $state('');
+  let contextMenuEl = $state<HTMLDivElement | null>(null);
+  let contextMenuReturnFocus: HTMLElement | null = null;
+  let tabEls = $state<Record<string, HTMLDivElement>>({});
+
+  /** ARIA tabs pattern: arrows move focus + activate; Home/End jump. */
+  function handleTabsKeydown(e: KeyboardEvent) {
+    const ids = tabsStore.tabs.map((t) => t.id);
+    if (ids.length === 0) return;
+    const currentIdx = ids.indexOf(tabsStore.activeTabId ?? '');
+    let targetIdx = -1;
+    if (e.key === 'ArrowRight') targetIdx = (currentIdx + 1) % ids.length;
+    else if (e.key === 'ArrowLeft') targetIdx = (currentIdx - 1 + ids.length) % ids.length;
+    else if (e.key === 'Home') targetIdx = 0;
+    else if (e.key === 'End') targetIdx = ids.length - 1;
+    if (targetIdx === -1) return;
+    e.preventDefault();
+    tabsStore.setActive(ids[targetIdx]);
+    tabEls[ids[targetIdx]]?.focus();
+  }
+
+  /** Menu keyboard: arrows cycle items, Tab wraps, Escape closes. */
+  function handleMenuKeydown(e: KeyboardEvent) {
+    const items = Array.from(
+      contextMenuEl?.querySelectorAll<HTMLButtonElement>('.context-menu-item') ?? [],
+    );
+    if (items.length === 0) return;
+    const idx = items.indexOf(document.activeElement as HTMLButtonElement);
+    let targetIdx = -1;
+    if (e.key === 'ArrowDown') targetIdx = (idx + 1) % items.length;
+    else if (e.key === 'ArrowUp') targetIdx = (idx - 1 + items.length) % items.length;
+    else if (e.key === 'Home') targetIdx = 0;
+    else if (e.key === 'End') targetIdx = items.length - 1;
+    else if (e.key === 'Tab') targetIdx = e.shiftKey ? (idx - 1 + items.length) % items.length : (idx + 1) % items.length;
+    if (targetIdx !== -1) {
+      e.preventDefault();
+      items[targetIdx]?.focus();
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeContextMenu();
+    }
+  }
+
+  function handleContextMenu(e: MouseEvent, tabId: string) {
+    contextMenuPos = { x: e.clientX, y: e.clientY };
+    contextMenuTabId = tabId;
+    contextMenuReturnFocus = document.activeElement as HTMLElement | null;
+    showContextMenu = true;
+  }
+
+  function closeContextMenu() {
+    showContextMenu = false;
+    contextMenuReturnFocus?.focus();
+    contextMenuReturnFocus = null;
+  }
+
+  // Focus the first item when the menu opens
+  $effect(() => {
+    if (showContextMenu) {
+      const first = contextMenuEl?.querySelector<HTMLButtonElement>('.context-menu-item');
+      first?.focus();
+    }
+  });
 
   function handleNewTab() {
     tabsStore.newTab();
@@ -30,16 +95,6 @@
     } else {
       tabsStore.forceCloseTab(id);
     }
-  }
-
-  function handleContextMenu(e: MouseEvent, tabId: string) {
-    contextMenuPos = { x: e.clientX, y: e.clientY };
-    contextMenuTabId = tabId;
-    showContextMenu = true;
-  }
-
-  function closeContextMenu() {
-    showContextMenu = false;
   }
 
   function emit(name: string, detail?: unknown) {
@@ -113,10 +168,11 @@
   }
 </script>
 
-<div class="tabbar" role="tablist" aria-label="Open files">
-  <div class="tabbar-scroll">
+<div class="tabbar" role="tablist" aria-label={t('tabs.openFiles')}>
+  <div class="tabbar-scroll" role="presentation" onkeydown={handleTabsKeydown}>
     {#each tabsStore.tabs as tab, idx (tab.id)}
       <Tab
+        element={(el) => { if (el) tabEls[tab.id] = el; }}
         fileName={tab.fileName}
         isDirty={tab.content !== tab.savedContent}
         isActive={tab.id === tabsStore.activeTabId}
@@ -133,7 +189,7 @@
       />
     {/each}
   </div>
-  <button class="tabbar-new" onclick={handleNewTab} title="New tab (CmdOrCtrl+N)" aria-label="New tab">
+  <button class="tabbar-new" onclick={handleNewTab} title="New tab (CmdOrCtrl+N)" aria-label={t('tabs.newTab')}>
     <svg width="14" height="14" viewBox="0 0 14 14">
       <path fill="currentColor" d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
     </svg>
@@ -150,36 +206,39 @@
   >
     <div
       class="context-menu"
+      bind:this={contextMenuEl}
       style="left: {contextMenuPos.x}px; top: {contextMenuPos.y}px;"
       role="menu"
-      aria-label="Tab actions"
+      tabindex="-1"
+      aria-label={t('tabs.openFiles')}
+      onkeydown={handleMenuKeydown}
     >
       <button class="context-menu-item" role="menuitem" onclick={() => { emit('menu-new-tab'); closeContextMenu(); }}>
-        <span>New Tab</span>
+        <span>{t('tabs.new')}</span>
         <span class="shortcut">Ctrl+N</span>
       </button>
       <button class="context-menu-item" role="menuitem" onclick={() => { emit('menu-open-file'); closeContextMenu(); }}>
-        <span>Open File...</span>
+        <span>{t('tabs.openFile')}</span>
         <span class="shortcut">Ctrl+O</span>
       </button>
       <div class="context-menu-sep"></div>
       <button class="context-menu-item" role="menuitem" onclick={() => { handleTabClose(contextMenuTabId); closeContextMenu(); }}>
-        <span>Close</span>
+        <span>{t('tabs.close')}</span>
         <span class="shortcut">Ctrl+W</span>
       </button>
       <button class="context-menu-item" role="menuitem" onclick={closeOtherTabs}>
-        Close Others
+        {t('tabs.closeOthers')}
       </button>
       <button class="context-menu-item" role="menuitem" onclick={closeAllTabs}>
-        Close All
+        {t('tabs.closeAll')}
       </button>
       {#if tabsStore.tabs.find(t => t.id === contextMenuTabId)?.path}
         <div class="context-menu-sep"></div>
         <button class="context-menu-item" role="menuitem" onclick={copyPath}>
-          Copy Path
+          {t('tabs.copyPath')}
         </button>
         <button class="context-menu-item" role="menuitem" onclick={revealInExplorer}>
-          Reveal in File Explorer
+          {t('tabs.revealInExplorer')}
         </button>
       {/if}
     </div>

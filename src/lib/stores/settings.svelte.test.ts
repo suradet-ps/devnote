@@ -58,6 +58,7 @@ describe('settingsStore migration & validation', () => {
       showStatusBar: true,
       tabSize: 4,
       insertSpaces: true,
+      locale: 'system',
     });
   });
 

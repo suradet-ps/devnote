@@ -2,6 +2,7 @@
   import { tabsStore } from '$lib/stores/tabs.svelte';
   import { settingsStore } from '$lib/stores/settings.svelte';
   import { requestIdleCallbackShim, cancelIdleCallbackShim } from '$lib/utils/idle';
+  import { t } from '$lib/i18n/i18n.svelte';
 
   let line = $derived(tabsStore.activeTab?.cursorLine ?? 1);
   let col = $derived(tabsStore.activeTab?.cursorCol ?? 1);
@@ -65,7 +66,7 @@
   };
 
   const languages = [
-    { key: 'text', label: 'Plain Text' },
+    { key: 'text', label: t('status.plainText') },
     { key: 'javascript', label: 'JavaScript' },
     { key: 'typescript', label: 'TypeScript' },
     { key: 'rust', label: 'Rust' },
@@ -102,23 +103,83 @@
       showLangPicker = false;
     }
   }
+
+  let langPickerEl = $state<HTMLDivElement | null>(null);
+
+  // Focus the first option when the picker opens
+  $effect(() => {
+    if (showLangPicker) {
+      langPickerEl?.querySelector<HTMLButtonElement>('.lang-option')?.focus();
+    }
+  });
+
+  // Close on outside click only (blur-based closing breaks keyboard nav,
+  // because moving focus into an option would close the picker).
+  $effect(() => {
+    if (!showLangPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement | null)?.closest('.statusbar-left')) {
+        showLangPicker = false;
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  });
+
+  function handleLangPickerKeydown(e: KeyboardEvent) {
+    const items = Array.from(
+      langPickerEl?.querySelectorAll<HTMLButtonElement>('.lang-option') ?? [],
+    );
+    if (items.length === 0) return;
+    const idx = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[(idx + 1) % items.length]?.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(idx - 1 + items.length) % items.length]?.focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      items[0]?.focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      items[items.length - 1]?.focus();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      showLangPicker = false;
+    }
+  }
+
+  // Live region: announce meaningful status changes (language / encoding /
+  // line endings) without spamming every cursor move. The volatile Ln/Col/
+  // words/chars values are aria-hidden so they never re-announce.
+  let liveAnnouncement = $state('');
+  let prevMeta = $state('');
+  $effect(() => {
+    const meta = `${language}\u0000${encoding}\u0000${lineEnding}`;
+    if (meta === prevMeta) return;
+    prevMeta = meta;
+    liveAnnouncement =
+      `${t('status.languageChanged', { language: langDisplay[language] ?? language })} ` +
+      `${t('status.encodingChanged', { encoding })} ` +
+      `${t('status.lineEndingChanged', { ending: lineEnding })}`;
+  });
 </script>
 
 {#if settingsStore.showStatusBar}
-  <div class="statusbar" role="status" aria-label="Status bar">
+  <div class="statusbar" role="status" aria-label={t('status.role')}>
     <div class="statusbar-left">
       <button
         class="statusbar-badge"
         onclick={() => showLangPicker = !showLangPicker}
-        onblur={() => setTimeout(() => showLangPicker = false, 200)}
-        aria-label="Select language"
+        aria-label={t('status.selectLanguage')}
         aria-haspopup="listbox"
         aria-expanded={showLangPicker}
       >
         {langDisplay[language] ?? language}
       </button>
       {#if showLangPicker}
-        <div class="lang-picker" role="listbox">
+        <div class="lang-picker" role="listbox" tabindex="-1" bind:this={langPickerEl} onkeydown={handleLangPickerKeydown}>
           {#each languages as lang}
             <button
               class="lang-option"
@@ -133,28 +194,41 @@
         </div>
       {/if}
       {#if settingsStore.wordWrap}
-        <span class="statusbar-item statusbar-tag">Wrap</span>
+        <span class="statusbar-item statusbar-tag" aria-hidden="true">{t('status.wrap')}</span>
       {/if}
       {#if fileSize > 102400}
-        <span class="statusbar-item">{formatFileSize(fileSize)}</span>
+        <span class="statusbar-item" aria-hidden="true">{formatFileSize(fileSize)}</span>
       {/if}
     </div>
-    <div class="statusbar-center">
+    <div class="statusbar-center" aria-hidden="true">
       <span class="statusbar-item">{encoding}</span>
       <span class="statusbar-sep">·</span>
       <span class="statusbar-item">{lineEnding}</span>
     </div>
-    <div class="statusbar-right">
-      <span class="statusbar-item">Ln {line}, Col {col}</span>
+    <div class="statusbar-right" aria-hidden="true">
+      <span class="statusbar-item">{t('status.lineCol', { line, col })}</span>
       <span class="statusbar-sep">·</span>
-      <span class="statusbar-item">{wordCount} words</span>
+      <span class="statusbar-item">{t('status.words', { count: wordCount })}</span>
       <span class="statusbar-sep">·</span>
-      <span class="statusbar-item">{charCount} chars</span>
+      <span class="statusbar-item">{t('status.chars', { count: charCount })}</span>
     </div>
   </div>
+  <span class="sr-only" aria-live="polite">{liveAnnouncement}</span>
 {/if}
 
 <style>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .statusbar {
     height: 24px;
     background: var(--surface-soft);

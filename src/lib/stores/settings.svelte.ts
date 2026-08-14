@@ -1,4 +1,5 @@
 import type { Store } from '@tauri-apps/plugin-store';
+import { resolveLocale, setLocale, type LocaleSetting } from '$lib/i18n/i18n.svelte';
 
 export interface Settings {
   theme: 'light' | 'dark' | 'system';
@@ -9,6 +10,7 @@ export interface Settings {
   showStatusBar: boolean;
   tabSize: number;
   insertSpaces: boolean;
+  locale: LocaleSetting;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -20,6 +22,7 @@ const DEFAULT_SETTINGS: Settings = {
   showStatusBar: true,
   tabSize: 4,
   insertSpaces: true,
+  locale: 'system',
 };
 
 const LOCALSTORAGE_KEY = 'devnote-settings';
@@ -51,6 +54,9 @@ function sanitizeSettings(partial: unknown): Partial<Settings> {
     out.tabSize = src.tabSize;
   }
   if (typeof src.insertSpaces === 'boolean') out.insertSpaces = src.insertSpaces;
+  if (src.locale === 'system' || src.locale === 'en' || src.locale === 'th') {
+    out.locale = src.locale;
+  }
   return out;
 }
 
@@ -85,6 +91,7 @@ async function initStore(): Promise<void> {
     if (fromStore) {
       _settings = resolveSettings(fromStore);
       _initialized = true;
+      applyLocale();
       return;
     }
     // Migration: if the Tauri store is empty, look in localStorage
@@ -120,6 +127,11 @@ async function initStore(): Promise<void> {
     }
   }
   _initialized = true;
+}
+
+/** Apply the persisted locale (or OS detection) to the i18n layer. */
+function applyLocale(): void {
+  setLocale(resolveLocale(_settings.locale));
 }
 
 async function persistSettings(): Promise<void> {
@@ -208,6 +220,9 @@ export const settingsStore = {
     _settings = { ..._settings, ...partial };
     _themeVersion++;
     this.applySystemTheme();
+    if (partial.locale !== undefined) {
+      applyLocale();
+    }
     void persistSettings();
   },
 
