@@ -167,9 +167,9 @@ code wins, and STATUS reflects the code.
 | Path canonicalization | done | symlink-escape guard |
 | `unsafe` audit | done | zero `unsafe` in app crate |
 | Release optimizations | done | `opt-level="z"`, `lto`, `strip`, `panic="abort"` |
-| CI workflow | done (partial) | `ci.yml`: frontend check/test + Rust fmt/clippy/test/doc on 3-OS matrix; missing build smoke / `bun run build` / deny-audit (Roadmap Phase 1) |
+| CI workflow | done | frontend check/test/build; Rust fmt/clippy/test/doc on 3-OS matrix; Tauri deb-build smoke; deny/audit gate; conventional-commits title check. Branch protection pending admin (Roadmap Phase 1) |
 | Cross-platform release pipeline | done (partial) | tag-triggered Windows installer release exists; macOS/Linux + checksums + signing open (Roadmap Phase 9) |
-| `cargo-deny` / `cargo-audit` | **open** | Roadmap Phase 1 / 8 |
+| `cargo-deny` / `cargo-audit` | done | `src-tauri/deny.toml`; one explicit license exception: `chardet` (LGPL-3.0) |
 
 ---
 
@@ -188,8 +188,8 @@ code wins, and STATUS reflects the code.
 
 ## 14. Known Gaps (consolidated)
 
-1. **CI gaps** — workflow exists, but missing `bun run build`, Tauri build smoke,
-   `cargo-deny`/`cargo-audit`, and conventional-commit check (Roadmap Phase 1).
+1. **Branch protection** — the only remaining Phase 1 item; requires repo-admin
+   enablement on GitHub (required status checks, strict, on `main`).
 2. **AGENTS.md drift** — reconciled in Phase 0; this STATUS file is now authoritative.
 3. **About dialog** unhandled (`menu-about` emitted, no listener).
 4. **External-change detection** + **large-file streaming** not implemented.

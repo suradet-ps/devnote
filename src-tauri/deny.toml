@@ -1,0 +1,49 @@
+# cargo-deny configuration for devnote.
+#
+# Policy (see docs/ROADMAP.md Phase 1 + Phase 8): permissive licenses only;
+# no GPL/copyleft without an explicit, documented exception. MPL-2.0 (Mozilla
+# weak copyleft, pulled in by the Servo CSS stack: cssparser/selectors) is
+# allowed deliberately, matching cargo-deny's own default template.
+
+[licenses]
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Zlib",
+]
+exceptions = [
+    # chardet (LGPL-3.0) — EXPLICIT EXCEPTION (Roadmap Phase 1/8): charset-
+    # detection helper, direct dependency. Weak copyleft accepted deliberately
+    # for the offline encoding-detection feature; obligations documented in
+    # docs/ROADMAP.md. Revisit a permissive replacement (e.g. chardetng).
+    { name = "chardet", version = "*", allow = ["LGPL-3.0"] },
+]
+
+[bans]
+multiple-versions = "warn"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+
+[advisories]
+# Unmaintained advisories only fail when they hit our direct dependencies.
+# Transitive unmaintained crates are upstream's concern (e.g. the gtk-rs
+# GTK3 bindings that Tauri's Linux backend is built on; rust-unic tables via
+# urlpattern; proc-macro-error) — they have no permissive replacement and
+# no patched version, so failing on them adds noise without signal.
+unmaintained = "workspace"
+ignore = [
+    # quick-xml 0.39 remains in the Linux build-tool chain only:
+    # wayland-scanner (proc-macro) parses trusted, bundled wayland protocol
+    # XML at build time — not reachable by untrusted input. The runtime XML
+    # path (plist) is already on quick-xml 0.41.0 (patched) via plist 1.10.0.
+    { id = "RUSTSEC-2026-0194", reason = "build-time proc-macro (wayland-scanner) on trusted bundled XML; runtime path patched via plist 1.10.0 -> quick-xml 0.41.0" },
+    { id = "RUSTSEC-2026-0195", reason = "same as RUSTSEC-2026-0194: wayland-scanner build tooling only; runtime path on quick-xml 0.41.0" },
+]

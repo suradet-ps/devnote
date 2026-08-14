@@ -70,11 +70,12 @@ Verified directly against the repository, not assumed:
 - `AGENTS.md` documents an architecture (custom titlebar, `fs:*` dialog plugin,
   `stores/recent.ts` readable, etc.) that **no longer matches the code** — it was
   superseded by v0.2.0. AGENTS.md must be reconciled with reality (Phase 0 task).
-- **CI exists but is incomplete** — `.github/workflows/ci.yml` runs the frontend
-  `check` + `test` and the Rust fmt/clippy/test/doc gate on a 3-OS matrix, but
-  there is no `bun run build`, no Tauri build smoke, no `cargo-deny`/`cargo-audit`,
-  and no conventional-commit check (see Phase 1). Note: an earlier draft of this
-  roadmap claimed "no CI exists" — that was inaccurate; the workflow predates it.
+- **CI is complete** — `.github/workflows/ci.yml` runs frontend check/test/build,
+  the Rust fmt/clippy/test/doc gate on a 3-OS matrix, a Tauri deb-build smoke on
+  Linux, a `cargo-deny`/`cargo-audit` dependency gate, and a conventional-commits
+  PR title check (Phase 1; the one remaining item, branch protection, is a
+  repo-admin action). Note: an earlier draft of this roadmap claimed "no CI
+  exists" — that was inaccurate; the workflow predates it.
 - No automated **cross-platform release pipeline** (checksums, signed artifacts) —
   a tag-triggered Windows installer workflow (`release-windows.yml`) exists, but
   macOS/Linux artifacts, checksums, and signing are not wired (see Phase 9).
@@ -124,32 +125,34 @@ low-memory `.cargo/config.toml`). Perf baseline remains open under Phase 7.
 ## Phase 1: Continuous Integration (the missing promise)
 
 This phase exists because CHANGELOG claims a CI story. The workflow already exists
-in the repo (`.github/workflows/ci.yml`) — this phase closes the remaining gaps so
-a PR that breaks anything is red and cannot merge.
+in the repo (`.github/workflows/ci.yml`); completed in the `phase-1-ci` PR — every
+code-level gate below now runs on push/PR to `main`.
 
-- [x] `.github/workflows/ci.yml` exists, runs on push/PR to `main`:
+- [x] `.github/workflows/ci.yml`, runs on push/PR to `main`:
   - [x] **Frontend**: `bun install --frozen-lockfile`, `bun run check`
-    (svelte-check), `bun run test` (vitest).
+    (svelte-check), `bun run test` (vitest), `bun run build` (vite build).
   - [x] **Rust**: `cargo fmt --check`, `cargo check --locked`,
     `cargo clippy -- -D warnings`, `cargo test`, `cargo doc --no-deps`.
   - [x] Matrix: `ubuntu-latest`, `macos-latest`, `windows-latest` for the Rust
     checks; frontend on `ubuntu-latest`.
   - [x] Caching: `actions/cache` for `~/.cargo/{registry,git}` + `target/`
     and the bun install cache.
-- [ ] **Frontend build step**: add `bun run build` (vite build succeeds) to the
-  frontend job — currently missing.
-- [ ] **Tauri build smoke**: `bun run tauri build` on a Linux runner (catches
-  broken `tauri.conf.json`, missing icons, capability drift) — does **not**
-  need to publish.
-- [ ] Branch protection on `main`: required status checks (strict), no force-push,
-  no deletion — mirror the discipline from the example roadmap.
-- [ ] A `conventional-commits` PR title check (already the de-facto style in
+- [x] **Tauri build smoke**: `bun run tauri build --bundles deb` on a Linux runner
+  (catches broken `tauri.conf.json`, missing icons, capability drift, bundler
+  config). `--bundles deb` only: deb's tooling is guaranteed on GH runners;
+  rpm needs `rpmbuild` and AppImage downloads `appimagetool`. Does **not** publish.
+- [x] A `conventional-commits` PR title check (already the de-facto style in
   CHANGELOG) so the changelog/release notes can be automated later.
-- [ ] `cargo-deny` + `cargo-audit` step (license + advisory gate) even though the
-  dependency tree is small today — it is cheap insurance as it grows.
+- [x] `cargo-deny` + `cargo-audit` gate (license + advisory), driven by
+  `src-tauri/deny.toml`. Includes one documented license exception:
+  `chardet` (LGPL-3.0) — see the deny.toml note and Phase 8.
+- [ ] Branch protection on `main`: required status checks (strict), no force-push,
+  no deletion — **repo-admin action on GitHub, not code**; enable after this PR
+  merges.
 
 **Acceptance:** A PR that breaks `check`, `clippy -D warnings`, any test,
-`bun run build`, or the Tauri build is red and cannot merge. Deny/audit step is green.
+`bun run build`, or the Tauri build is red and cannot merge. Deny/audit step is
+green. (Branch protection pending manual admin enablement.)
 
 ---
 
@@ -320,9 +323,11 @@ without a noted exception.
 - [ ] **Reproducible build check**: same commit + same inputs → byte-identical
   installer artifact (at least for the non-code-signed, ad-hoc path). Document how to
   verify.
-- [ ] **Dependency hygiene gate**: `cargo-deny` (licenses: MIT/Apache-2.0 allowed,
-  no GPL/copyleft without explicit exception) + `cargo-audit` green in CI; Renovate or
-  manual bump policy recorded in CONTRIBUTING.md.
+- [x] **Dependency hygiene gate**: `cargo-deny` + `cargo-audit` green in CI,
+  driven by `src-tauri/deny.toml` (permissive licenses only, with one explicit,
+  documented exception: `chardet` LGPL-3.0 — added in Phase 1).
+- [ ] **Dependency bump policy**: Renovate or manual bump policy recorded in
+  CONTRIBUTING.md.
 - [ ] **Auto-update decision**: Tauri's updater requires signed manifests + a server.
   Decide explicitly: **out of scope for v1 LTS** (offline-first field use means
   manual download). Document the "check for updates" policy (manual, explicit, no
