@@ -22,7 +22,11 @@ allow = [
     "Zlib",
 ]
 exceptions = [
-    { name = "chardet", version = "*", allow = ["LGPL-3.0"], note = "EXPLICIT EXCEPTION (Roadmap Phase 1/8): charset-detection helper, direct dependency. LGPL-3.0 weak copyleft accepted deliberately for the offline encoding-detection feature; obligations documented in docs/ROADMAP.md. Revisit a permissive replacement (e.g. chardetng) when convenient." },
+    # chardet (LGPL-3.0) — EXPLICIT EXCEPTION (Roadmap Phase 1/8): charset-
+    # detection helper, direct dependency. Weak copyleft accepted deliberately
+    # for the offline encoding-detection feature; obligations documented in
+    # docs/ROADMAP.md. Revisit a permissive replacement (e.g. chardetng).
+    { name = "chardet", version = "*", allow = ["LGPL-3.0"] },
 ]
 
 [bans]
