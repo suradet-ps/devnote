@@ -962,7 +962,6 @@
 
   .goto-line-input:focus {
     border-color: var(--primary);
-    outline: none;
   }
 
   .goto-line-btn {

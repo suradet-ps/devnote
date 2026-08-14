@@ -148,7 +148,6 @@
 
   .find-input:focus {
     border-color: var(--primary);
-    outline: none;
   }
 
   .find-btn {

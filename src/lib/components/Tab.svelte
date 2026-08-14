@@ -166,7 +166,6 @@
     background: var(--canvas);
     border: 1px solid var(--primary);
     border-radius: var(--r-xs);
-    outline: none;
   }
 
   .tab-close {
