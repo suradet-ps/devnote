@@ -7,18 +7,14 @@
 
 [licenses]
 allow = [
-    "0BSD",
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
     "BSD-2-Clause",
     "BSD-3-Clause",
     "BSL-1.0",
-    "CC0-1.0",
-    "ISC",
     "MIT",
     "MPL-2.0",
     "Unicode-3.0",
-    "Unlicense",
     "Zlib",
 ]
 exceptions = [
@@ -35,3 +31,19 @@ multiple-versions = "warn"
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
+
+[advisories]
+# Unmaintained advisories only fail when they hit our direct dependencies.
+# Transitive unmaintained crates are upstream's concern (e.g. the gtk-rs
+# GTK3 bindings that Tauri's Linux backend is built on; rust-unic tables via
+# urlpattern; proc-macro-error) — they have no permissive replacement and
+# no patched version, so failing on them adds noise without signal.
+unmaintained = "workspace"
+ignore = [
+    # quick-xml 0.39 remains in the Linux build-tool chain only:
+    # wayland-scanner (proc-macro) parses trusted, bundled wayland protocol
+    # XML at build time — not reachable by untrusted input. The runtime XML
+    # path (plist) is already on quick-xml 0.41.0 (patched) via plist 1.10.0.
+    { id = "RUSTSEC-2026-0194", reason = "build-time proc-macro (wayland-scanner) on trusted bundled XML; runtime path patched via plist 1.10.0 -> quick-xml 0.41.0" },
+    { id = "RUSTSEC-2026-0195", reason = "same as RUSTSEC-2026-0194: wayland-scanner build tooling only; runtime path on quick-xml 0.41.0" },
+]
