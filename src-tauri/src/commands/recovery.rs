@@ -106,12 +106,20 @@ mod tests {
   async fn round_trip_preserves_identical_entries() {
     let dir = TempDir::new().unwrap();
     let entries = vec![
-      entry("a.txt", "hello world", Some("/x/a.txt"), "2026-01-01T00:00:00Z"),
+      entry(
+        "a.txt",
+        "hello world",
+        Some("/x/a.txt"),
+        "2026-01-01T00:00:00Z",
+      ),
       entry("untitled-1", "draft", None, "2026-01-01T00:00:01Z"),
     ];
 
     write_recovery_file(dir.path(), &entries).await.unwrap();
-    let got = read_recovery_file(dir.path()).await.unwrap().expect("entries");
+    let got = read_recovery_file(dir.path())
+      .await
+      .unwrap()
+      .expect("entries");
 
     assert_eq!(got.len(), 2);
     assert_eq!(got[0].file_name, "a.txt");
@@ -138,7 +146,9 @@ mod tests {
   #[tokio::test]
   async fn malformed_json_returns_none_instead_of_error() {
     let dir = TempDir::new().unwrap();
-    tokio::fs::write(dir.path().join("recovery.json"), b"{ not json").await.unwrap();
+    tokio::fs::write(dir.path().join("recovery.json"), b"{ not json")
+      .await
+      .unwrap();
     assert_eq!(read_recovery_file(dir.path()).await.unwrap(), None);
   }
 
@@ -157,9 +167,12 @@ mod tests {
   async fn data_survives_when_not_cleared() {
     // "Cancel" in the restore dialog performs no clear — recovery must persist.
     let dir = TempDir::new().unwrap();
-    write_recovery_file(dir.path(), &[entry("a.txt", "keep me", Some("/a.txt"), "t")])
-      .await
-      .unwrap();
+    write_recovery_file(
+      dir.path(),
+      &[entry("a.txt", "keep me", Some("/a.txt"), "t")],
+    )
+    .await
+    .unwrap();
     let got = read_recovery_file(dir.path()).await.unwrap().unwrap();
     assert_eq!(got[0].content, "keep me");
   }

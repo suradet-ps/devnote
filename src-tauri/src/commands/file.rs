@@ -548,16 +548,28 @@ mod tests {
 
   #[test]
   fn detect_encoding_prefers_utf16_boms_over_chardet() {
-    assert_eq!(detect_encoding(b"\xFF\xFEh\x00i\x00"), encoding_rs::UTF_16LE);
-    assert_eq!(detect_encoding(b"\xFE\xFF\x00h\x00i"), encoding_rs::UTF_16BE);
+    assert_eq!(
+      detect_encoding(b"\xFF\xFEh\x00i\x00"),
+      encoding_rs::UTF_16LE
+    );
+    assert_eq!(
+      detect_encoding(b"\xFE\xFF\x00h\x00i"),
+      encoding_rs::UTF_16BE
+    );
     assert_eq!(detect_encoding(b"\xEF\xBB\xBFhi"), encoding_rs::UTF_8);
     assert_eq!(detect_encoding(b""), encoding_rs::UTF_8);
   }
 
   #[test]
   fn encode_content_emits_utf16_boms() {
-    assert_eq!(encode_content("hi", "LF", "UTF-16LE"), b"\xFF\xFEh\x00i\x00");
-    assert_eq!(encode_content("hi", "LF", "UTF-16BE"), b"\xFE\xFF\x00h\x00i");
+    assert_eq!(
+      encode_content("hi", "LF", "UTF-16LE"),
+      b"\xFF\xFEh\x00i\x00"
+    );
+    assert_eq!(
+      encode_content("hi", "LF", "UTF-16BE"),
+      b"\xFE\xFF\x00h\x00i"
+    );
     assert_eq!(encode_content("hi", "LF", "UTF-8"), b"hi");
     assert_eq!(encode_content("hi", "LF", "windows-1252"), b"hi");
   }
@@ -686,7 +698,9 @@ mod tests {
     let f = std::fs::File::create(&path).unwrap();
     f.set_len(HARD_LIMIT_BYTES + 1).unwrap();
     drop(f);
-    let err = read_file_internal(&path.to_string_lossy()).await.unwrap_err();
+    let err = read_file_internal(&path.to_string_lossy())
+      .await
+      .unwrap_err();
     assert!(err.contains("File too large"), "unexpected error: {}", err);
   }
 
