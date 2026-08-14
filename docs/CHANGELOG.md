@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### CI & Tooling (Roadmap Phase 1)
+- **CI gates completed** in `.github/workflows/ci.yml`: added `bun run build`
+  (vite) to the frontend job, a Tauri release build smoke on Linux
+  (`--bundles deb`), a `cargo-deny` + `cargo-audit` dependency gate, and a
+  conventional-commits PR title check.
+- **License policy documented**: `src-tauri/deny.toml` allows permissive
+  licenses only, with one explicit exception — `chardet` (LGPL-3.0, charset
+  detection). `src-tauri/Cargo.toml` now declares `license = "MIT"`.
+
 ## v0.2.0 — Production Grade Upgrade
 
 ### Breaking Changes
