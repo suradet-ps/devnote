@@ -41,12 +41,19 @@
   let searchMatches: { from: number; to: number }[] = [];
   let searchIndex = -1;
 
-  function jumpToMatch(targetView: EditorView, m: { from: number; to: number }) {
+  function selectMatch(
+    targetView: EditorView,
+    m: { from: number; to: number },
+    opts: { focus: boolean },
+  ) {
     targetView.dispatch({
       selection: { anchor: m.from, head: m.to },
       effects: EditorView.scrollIntoView(m.from, { y: 'center' }),
     });
-    targetView.focus();
+    // Only steal focus for explicit navigation (F3 / Enter). While the user
+    // is still typing in the find field the editor must NOT grab focus —
+    // otherwise the rest of the query types into the document.
+    if (opts.focus) targetView.focus();
   }
 
   function jumpToPos(targetView: EditorView, pos: number) {
@@ -110,6 +117,9 @@
         });
       },
       (view) => {
+        // Edits shift match positions — recompute on next F3/Enter nav
+        searchMatches = [];
+        searchIndex = -1;
         // Record edit sites; programmatic content syncs (tab switch,
         // replace-all) are suppressed and must not pollute the history.
         if (suppressNextUpdate) return;
@@ -184,14 +194,18 @@
       case 'go-to-symbol': {
         // The language pack may still be loading (async import). Ensure it is
         // applied before extracting, otherwise the parse tree is empty.
+        // Capture view + language: if the user switches tabs while the pack
+        // loads, we must not reconfigure the new tab's editor.
+        const targetView = view;
+        const lang = currentLanguage;
         void (async () => {
-          const langExt = getLanguage(currentLanguage);
+          if (!targetView) return;
+          const langExt = getLanguage(lang);
           if (langExt instanceof Promise) {
             const resolved = await langExt;
-            view?.dispatch({ effects: [langCompartment.reconfigure(resolved)] });
+            targetView.dispatch({ effects: [langCompartment.reconfigure(resolved)] });
           }
-          if (!view) return;
-          const syms = extractSymbols(view.state);
+          const syms = extractSymbols(targetView.state);
           window.dispatchEvent(new CustomEvent('symbols-ready', { detail: syms }));
         })();
         break;
@@ -225,7 +239,7 @@
         let idx = searchMatches.findIndex((m) => m.to > pos);
         if (idx === -1) idx = 0;
         searchIndex = idx;
-        jumpToMatch(view, searchMatches[idx]);
+        selectMatch(view, searchMatches[idx], { focus: false });
         break;
       }
       case 'search-next': {
@@ -237,7 +251,7 @@
         }
         if (searchMatches.length === 0) break;
         searchIndex = (searchIndex + 1) % searchMatches.length;
-        jumpToMatch(view, searchMatches[searchIndex]);
+        selectMatch(view, searchMatches[searchIndex], { focus: true });
         break;
       }
       case 'search-prev': {
@@ -249,7 +263,7 @@
         }
         if (searchMatches.length === 0) break;
         searchIndex = (searchIndex - 1 + searchMatches.length) % searchMatches.length;
-        jumpToMatch(view, searchMatches[searchIndex]);
+        selectMatch(view, searchMatches[searchIndex], { focus: true });
         break;
       }
       case 'set-language': {

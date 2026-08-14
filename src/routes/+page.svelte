@@ -483,13 +483,13 @@
     } else if (mod && e.key === 'g') {
       e.preventDefault();
       showGoToLine = true;
-    } else if (mod && e.key === '=') {
+    } else if (mod && !e.altKey && e.key === '=') {
       e.preventDefault();
       settingsStore.increaseFontSize();
-    } else if (mod && e.key === '-') {
+    } else if (mod && !e.altKey && e.key === '-') {
       e.preventDefault();
       settingsStore.decreaseFontSize();
-    } else if (mod && e.key === '0') {
+    } else if (mod && !e.altKey && e.key === '0') {
       e.preventDefault();
       settingsStore.resetFontSize();
     } else if (e.altKey && e.key === 'z') {

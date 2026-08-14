@@ -12,6 +12,8 @@
 
   /** ARIA tabs pattern: arrows move focus + activate; Home/End jump. */
   function handleTabsKeydown(e: KeyboardEvent) {
+    // Let the tab-rename input handle arrow keys natively
+    if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
     const ids = tabsStore.tabs.map((t) => t.id);
     if (ids.length === 0) return;
     const currentIdx = ids.indexOf(tabsStore.activeTabId ?? '');

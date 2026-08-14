@@ -31,6 +31,13 @@
     })();
   });
 
+  // Keep the active item valid when the filter shrinks the list
+  $effect(() => {
+    if (activeIdx >= filtered.length) {
+      activeIdx = Math.max(filtered.length - 1, 0);
+    }
+  });
+
   // Keep the active item in view when navigating with arrows
   $effect(() => {
     if (!open) return;
