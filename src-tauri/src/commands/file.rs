@@ -740,8 +740,6 @@ mod tests {
   #[cfg(windows)]
   #[tokio::test]
   async fn failed_save_leaves_target_untouched() {
-    use std::fs::Permissions;
-
     let dir = TempDir::new().unwrap();
     let path = dir.path().join("locked.txt");
     std::fs::write(&path, b"original").unwrap();
