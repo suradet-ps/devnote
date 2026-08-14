@@ -95,9 +95,16 @@ devnote/
 │   │   ├── stores/           # Svelte 5 state (tabs, recent, settings)
 │   │   └── utils/            # Helpers (language detection, path formatting)
 │   └── routes/               # Page routes
-├── DESIGN.md                 # Design tokens & visual system
-├── AGENTS.md                 # Full spec & architecture docs
-└── scripts/                  # Build scripts (icon generation)
+├── docs/                      # Documentation
+│   ├── README.md              # This file
+│   ├── DESIGN.md              # Design tokens & visual system
+│   ├── STATUS.md              # Verified current-state snapshot
+│   ├── CHANGELOG.md           # Release history
+│   ├── CONTRIBUTING.md
+│   ├── ROADMAP.md
+│   └── AGENTS-RUST.md         # Rust agent instructions
+├── AGENTS.md                  # Agent instructions (loaded from root)
+└── scripts/                   # Build scripts (icon generation)
 ```
 
 ## Keyboard Shortcuts

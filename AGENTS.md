@@ -23,15 +23,19 @@
 > uses a **native OS titlebar** (`decorations: true`, no `TitleBar.svelte`),
 > **`tauri-plugin-store`** for settings (not `localStorage`), a **recovery** state,
 > a **clipboard-manager** plugin, and **macOS Apple-Events** handling for
-> "Open With" / drag-to-icon. See `STATUS.md` for the verified current-state table.
+> "Open With" / drag-to-icon. See `docs/STATUS.md` for the verified current-state table.
 
 ```
 devnote/
 ├── AGENTS.md                  ← this file (authoritative spec)
-├── DESIGN.md                  ← design tokens (Anthropic visual system)
-├── STATUS.md                  ← verified current-state snapshot (kept in sync with code)
-├── CHANGELOG.md               ← release history (v0.2.0 production-grade upgrade)
-├── CONTRIBUTING.md
+├── docs/                      ← all documentation (see below)
+│   ├── DESIGN.md              ← design tokens (Anthropic visual system)
+│   ├── STATUS.md              ← verified current-state snapshot (kept in sync with code)
+│   ├── CHANGELOG.md           ← release history (v0.2.0 production-grade upgrade)
+│   ├── CONTRIBUTING.md
+│   ├── ROADMAP.md
+│   ├── README.md
+│   └── AGENTS-RUST.md
 ├── LICENSE
 ├── scripts/                   ← build scripts (icon generation, post-build macOS)
 ├── .github/workflows/         ← CI + release (see Roadmap Phase 1)
@@ -85,9 +89,9 @@ devnote/
 
 ---
 
-## 2. Design System (from DESIGN.md)
+## 2. Design System (from docs/DESIGN.md)
 
-> AI agents **must** read `DESIGN.md` in full before touching any `.svelte`, `.css`, or `.ts` UI file.
+> AI agents **must** read `docs/DESIGN.md` in full before touching any `.svelte`, `.css`, or `.ts` UI file.
 > Every color, radius, and spacing value **must** use the CSS custom property token — **never inline hex**.
 
 ### 2.1 CSS Token Surface

@@ -3,7 +3,7 @@
 This roadmap tracks the path from the current production-grade scaffold (v1.0.0)
 to a durable, maintainable first long-term-support release, and beyond. It follows
 the architecture, design system, and engineering standards set out in
-[AGENTS.md](AGENTS.md), [DESIGN.md](DESIGN.md), [CONTRIBUTING.md](CONTRIBUTING.md),
+[AGENTS.md](../AGENTS.md), [DESIGN.md](DESIGN.md), [CONTRIBUTING.md](CONTRIBUTING.md),
 and the v0.2.0 record in [CHANGELOG.md](CHANGELOG.md).
 
 The example this roadmap was modelled on (the MenSung medical-editor roadmap) is a

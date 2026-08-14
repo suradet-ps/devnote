@@ -18,7 +18,7 @@ Thank you for considering contributing to devnote! We welcome contributions from
 
 ## Code Style
 
-- Follow the conventions in `AGENTS.md` and `DESIGN.md`
+- Follow the conventions in `../AGENTS.md` and `DESIGN.md`
 - Use CSS custom properties for all styling — no inline hex values
 - TypeScript: no `any`, use proper types
 - Svelte 5 runes syntax ($state, $derived, $effect) — not legacy `$:` syntax
