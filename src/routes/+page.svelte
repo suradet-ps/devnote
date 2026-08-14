@@ -494,6 +494,12 @@
       // (which checks for dirty tabs) runs.
       e.preventDefault();
       void handleCloseRequest();
+    } else if (mod && !e.shiftKey && e.key === 'd') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'add-next-occurrence' });
+    } else if (mod && e.shiftKey && e.key === 'l') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'select-all-occurrences' });
     } else if (mod && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
       dispatchEditorAction({ action: 'undo' });
@@ -718,6 +724,8 @@
       listen('menu-copy', () => dispatchEditorAction({ action: 'copy' })),
       listen('menu-paste', () => dispatchEditorAction({ action: 'paste' })),
       listen('menu-select-all', () => dispatchEditorAction({ action: 'select-all' })),
+      listen('menu-add-next-occurrence', () => dispatchEditorAction({ action: 'add-next-occurrence' })),
+      listen('menu-select-all-occurrences', () => dispatchEditorAction({ action: 'select-all-occurrences' })),
       listen('menu-find', () => { showFindReplace = true; }),
       listen('menu-find-replace', () => { showFindReplace = true; }),
       listen('menu-go-to-line', () => { showGoToLine = true; }),

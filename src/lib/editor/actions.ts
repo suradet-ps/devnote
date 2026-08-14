@@ -18,7 +18,13 @@ export type EditorAction =
   | { action: 'search-prev'; query: string; caseSensitive: boolean; useRegex: boolean }
   | { action: 'search'; query: string; caseSensitive: boolean; useRegex: boolean }
   | { action: 'replace'; query: string; replacement: string; caseSensitive: boolean; useRegex: boolean }
-  | { action: 'replace-all'; query: string; replacement: string; caseSensitive: boolean; useRegex: boolean };
+  | { action: 'replace-all'; query: string; replacement: string; caseSensitive: boolean; useRegex: boolean }
+  | { action: 'add-next-occurrence' }
+  | { action: 'select-all-occurrences' }
+  | { action: 'jump-edit-back' }
+  | { action: 'jump-edit-forward' }
+  | { action: 'go-to-symbol' }
+  | { action: 'jump-to-symbol'; line: number };
 
 const EVENT_NAME = 'editor-action';
 

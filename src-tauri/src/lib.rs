@@ -130,6 +130,19 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
     )
     .separator()
     .item(
+      &MenuItemBuilder::new("Add Next Occurrence")
+        .id("menu-add-next-occurrence")
+        .build(app)
+        .unwrap(),
+    )
+    .item(
+      &MenuItemBuilder::new("Select All Occurrences")
+        .id("menu-select-all-occurrences")
+        .build(app)
+        .unwrap(),
+    )
+    .separator()
+    .item(
       &MenuItemBuilder::new("Find...")
         .id("menu-find")
         .build(app)
@@ -251,6 +264,12 @@ fn handle_menu_event(app: &tauri::AppHandle, menu_id: &str) {
     },
     "menu-select-all" => {
       window.emit("menu-select-all", ()).ok();
+    },
+    "menu-add-next-occurrence" => {
+      window.emit("menu-add-next-occurrence", ()).ok();
+    },
+    "menu-select-all-occurrences" => {
+      window.emit("menu-select-all-occurrences", ()).ok();
     },
     "menu-find" => {
       window.emit("menu-find", ()).ok();

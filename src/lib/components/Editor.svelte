@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { EditorView } from '@codemirror/view';
   import { undo, redo, selectAll } from '@codemirror/commands';
-  import { openSearchPanel } from '@codemirror/search';
+  import { openSearchPanel, selectMatches, selectNextOccurrence } from '@codemirror/search';
   import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
   import { createEditorState, reconfigureView, reconfigureLanguage } from '$lib/codemirror/setup';
   import { onEditorAction, type EditorAction } from '$lib/editor/actions';
@@ -106,6 +106,14 @@
       }
       case 'select-all':
         selectAll(view);
+        break;
+      case 'add-next-occurrence':
+        selectNextOccurrence(view);
+        view.focus();
+        break;
+      case 'select-all-occurrences':
+        selectMatches(view);
+        view.focus();
         break;
       case 'find':
       case 'find-replace':
