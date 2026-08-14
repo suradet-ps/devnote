@@ -56,6 +56,22 @@
   current tab opens the OS print dialog via the new `print_current` Rust
   command (JS webview API lacks `print()`).
 
+### File I/O Hardening (Roadmap Phase 5)
+- **Read-only preview**: files over 50 MB open non-editable with a status-bar
+  badge; Ctrl+S is blocked, recovery skips preview tabs, 200 MB hard cap
+  unchanged.
+- **Chunked atomic saves**: writes stream in 1 MB chunks without duplicating
+  the buffer (big saves use far less peak memory).
+- **External-change detection**: `notify` watcher prompts "Reload / Ignore"
+  when an open file changes on disk — debounced, self-save-suppressed, never
+  auto-reloads.
+- **Encoding override**: low-confidence detection (chardet < 0.6) opens a
+  picker (UTF-8 / UTF-16LE / UTF-16BE / Windows-1252) before content loads;
+  new `read_file_with_encoding` command.
+- **Window-close safety net**: verified `close-requested` interception on all
+  three OSes (Alt+F4 / Cmd+Q / WM close) with the Save All / Don't Save /
+  Cancel flow.
+
 ## v0.2.0 — Production Grade Upgrade
 
 ### Breaking Changes

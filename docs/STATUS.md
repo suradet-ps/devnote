@@ -41,8 +41,10 @@ code wins, and STATUS reflects the code.
 | Atomic save | done | `tempfile::NamedTempFile` + rename in same dir |
 | Permission-denied fallback | done | offers "Save Copy" |
 | `FilePayload` fields | done | `path, content, file_name, encoding, line_ending` |
-| External-change detection | **open** | not yet implemented (Roadmap Phase 5) |
-| Streaming open > 50 MB | **open** | full in-memory load today (Roadmap Phase 5) |
+| External-change detection | done | `notify` watcher: watch while tab open, 500 ms debounce, 1 s self-save suppression, Reload/Ignore dialog (Phase 5) |
+| Large-file preview | done | > 50 MB opens read-only preview; 200 MB hard cap (Phase 5) |
+| Chunked atomic save | done | streamed 1 MB chunks, no duplicate buffer (Phase 5) |
+| Encoding override | done | low-confidence (`chardet` < 0.6) prompts EncodingPicker + `read_file_with_encoding` (Phase 5) |
 
 ---
 
@@ -199,7 +201,8 @@ code wins, and STATUS reflects the code.
    enablement on GitHub (required status checks, strict, on `main`).
 2. **AGENTS.md drift** — reconciled in Phase 0; this STATUS file is now authoritative.
 3. **About dialog** unhandled (`menu-about` emitted, no listener).
-4. **External-change detection** + **large-file streaming** not implemented.
+4. **Virtualized large-file loading** — files > 50 MB open read-only (Phase 5);
+   true streaming/virtualized editing is deferred.
 5. **Manual SR session** — automated a11y checks are done (Phase 3); the
    VoiceOver/NVDA session checklist is in `docs/a11y-notes.md` and needs a
    human.
