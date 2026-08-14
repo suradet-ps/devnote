@@ -38,6 +38,24 @@
   let showVisibleWhitespace = $state(false);
   let showSymbolPicker = $state(false);
   let symbolList = $state<SymbolInfo[]>([]);
+  let showPrintOverlay = $state(false);
+  let printContent = $state('');
+
+  async function handlePrint() {
+    const tab = tabsStore.activeTab;
+    if (!tab) return;
+    printContent = tab.content;
+    showPrintOverlay = true;
+    await tick();
+    try {
+      await ipc.printCurrent();
+    } catch (e) {
+      console.error('print failed', e);
+      showToast(t('print.failed'));
+    } finally {
+      showPrintOverlay = false;
+    }
+  }
   let recentDialogEl = $state<HTMLDivElement | null>(null);
   let toastMessage = $state('');
   let toastVisible = $state(false);
@@ -509,6 +527,9 @@
     } else if (mod && e.shiftKey && e.key === 'p') {
       e.preventDefault();
       dispatchEditorAction({ action: 'go-to-symbol' });
+    } else if (mod && !e.shiftKey && e.key === 'p') {
+      e.preventDefault();
+      void handlePrint();
     } else if (mod && e.altKey && e.key === '-') {
       e.preventDefault();
       dispatchEditorAction({ action: 'jump-edit-back' });
@@ -756,6 +777,7 @@
       listen('menu-jump-edit-back', () => dispatchEditorAction({ action: 'jump-edit-back' })),
       listen('menu-jump-edit-forward', () => dispatchEditorAction({ action: 'jump-edit-forward' })),
       listen('menu-go-to-symbol', () => dispatchEditorAction({ action: 'go-to-symbol' })),
+      listen('menu-print', () => void handlePrint()),
       listen('menu-word-wrap', () => settingsStore.toggleWordWrap()),
       listen('menu-status-bar', () => settingsStore.toggleStatusBar()),
       listen('menu-indent-guides', () => { showIndentGuides = !showIndentGuides; }),
@@ -957,6 +979,16 @@
   {/if}
 </div>
 
+{#if showPrintOverlay}
+  <div class="print-overlay">
+    <div class="print-header">
+      <span class="print-title">{t('print.title')} — {activeTab?.fileName ?? ''}</span>
+      <button class="print-cancel" onclick={() => showPrintOverlay = false}>{t('dialog.cancel')}</button>
+    </div>
+    <pre class="print-body">{printContent}</pre>
+  </div>
+{/if}
+
 <ConfirmDialog
   open={confirmOpen}
   title={confirmTitle}
@@ -1132,5 +1164,71 @@
   .recent-item:hover {
     background: var(--surface-soft);
     color: var(--ink);
+  }
+
+  .print-overlay {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    color: #111;
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .print-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--sp-sm) var(--sp-md);
+    border-bottom: 1px solid var(--hairline);
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .print-title {
+    font-weight: 500;
+    color: var(--body);
+  }
+
+  .print-cancel {
+    padding: var(--sp-xxs) var(--sp-sm);
+    border-radius: var(--r-sm);
+    color: var(--muted);
+  }
+
+  .print-cancel:hover {
+    background: var(--surface-soft);
+    color: var(--ink);
+  }
+
+  .print-body {
+    flex: 1;
+    overflow: auto;
+    padding: var(--sp-lg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  @media print {
+    .app {
+      display: none;
+    }
+
+    .print-overlay {
+      position: static;
+    }
+
+    .print-header {
+      display: none;
+    }
+
+    .print-body {
+      overflow: visible;
+      padding: 0;
+    }
   }
 </style>

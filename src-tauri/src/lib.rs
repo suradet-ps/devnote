@@ -86,6 +86,13 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
         .unwrap(),
     )
     .separator()
+    .item(
+      &MenuItemBuilder::new("Print...")
+        .id("menu-print")
+        .build(app)
+        .unwrap(),
+    )
+    .separator()
     .quit()
     .build()
     .unwrap();
@@ -279,6 +286,9 @@ fn handle_menu_event(app: &tauri::AppHandle, menu_id: &str) {
     "menu-close-tab" => {
       window.emit("menu-close-tab", ()).ok();
     },
+    "menu-print" => {
+      window.emit("menu-print", ()).ok();
+    },
     "menu-undo" => {
       window.emit("menu-undo", ()).ok();
     },
@@ -374,6 +384,7 @@ pub fn run() {
       commands::file::get_pending_files,
       commands::file::frontend_ready,
       commands::window::set_window_title,
+      commands::window::print_current,
       commands::recovery::save_recovery_data,
       commands::recovery::check_recovery_data,
       commands::recovery::clear_recovery_data,

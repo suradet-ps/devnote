@@ -47,4 +47,6 @@ export const ipc = {
 
   setWindowTitle: (title: string) =>
     invoke<void>('set_window_title', { title }),
+
+  printCurrent: () => invoke<void>('print_current'),
 } as const;
