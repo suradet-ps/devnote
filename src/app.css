@@ -28,6 +28,9 @@
   --warning: #d4a017;
   --error: #c64545;
 
+  /* Indent guide lines (Phase 4) — hairline at 55% alpha, theme-aware */
+  --indent-guide: rgba(226, 222, 201, 0.55);
+
   --r-xs: 4px;
   --r-sm: 6px;
   --r-md: 8px;
@@ -51,6 +54,8 @@
   --surface-cream-strong: #2a2825;
   --hairline: #383532;
   --hairline-soft: #2e2c29;
+
+  --indent-guide: rgba(56, 53, 50, 0.55);
 
   --ink: var(--on-dark);
   --body-strong: var(--on-dark);

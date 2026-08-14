@@ -86,6 +86,13 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
         .unwrap(),
     )
     .separator()
+    .item(
+      &MenuItemBuilder::new("Print...")
+        .id("menu-print")
+        .build(app)
+        .unwrap(),
+    )
+    .separator()
     .quit()
     .build()
     .unwrap();
@@ -130,6 +137,19 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
     )
     .separator()
     .item(
+      &MenuItemBuilder::new("Add Next Occurrence")
+        .id("menu-add-next-occurrence")
+        .build(app)
+        .unwrap(),
+    )
+    .item(
+      &MenuItemBuilder::new("Select All Occurrences")
+        .id("menu-select-all-occurrences")
+        .build(app)
+        .unwrap(),
+    )
+    .separator()
+    .item(
       &MenuItemBuilder::new("Find...")
         .id("menu-find")
         .build(app)
@@ -147,6 +167,12 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
         .build(app)
         .unwrap(),
     )
+    .item(
+      &MenuItemBuilder::new("Go to Symbol...")
+        .id("menu-go-to-symbol")
+        .build(app)
+        .unwrap(),
+    )
     .build()
     .unwrap();
 
@@ -160,9 +186,22 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
     .build(app)
     .unwrap();
 
+  let indent_guides_item = CheckMenuItemBuilder::new("Indent Guides")
+    .id("menu-indent-guides")
+    .build(app)
+    .unwrap();
+
+  let visible_whitespace_item = CheckMenuItemBuilder::new("Visible Whitespace")
+    .id("menu-visible-whitespace")
+    .build(app)
+    .unwrap();
+
   let view_menu = SubmenuBuilder::new(app, "View")
     .item(&word_wrap_item)
     .item(&status_bar_item)
+    .separator()
+    .item(&indent_guides_item)
+    .item(&visible_whitespace_item)
     .separator()
     .item(
       &MenuItemBuilder::new("Zoom In")
@@ -179,6 +218,19 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::menu::Menu<tauri::Wry> {
     .item(
       &MenuItemBuilder::new("Reset Zoom")
         .id("menu-zoom-reset")
+        .build(app)
+        .unwrap(),
+    )
+    .separator()
+    .item(
+      &MenuItemBuilder::new("Jump to Previous Edit")
+        .id("menu-jump-edit-back")
+        .build(app)
+        .unwrap(),
+    )
+    .item(
+      &MenuItemBuilder::new("Jump to Next Edit")
+        .id("menu-jump-edit-forward")
         .build(app)
         .unwrap(),
     )
@@ -234,6 +286,9 @@ fn handle_menu_event(app: &tauri::AppHandle, menu_id: &str) {
     "menu-close-tab" => {
       window.emit("menu-close-tab", ()).ok();
     },
+    "menu-print" => {
+      window.emit("menu-print", ()).ok();
+    },
     "menu-undo" => {
       window.emit("menu-undo", ()).ok();
     },
@@ -252,6 +307,12 @@ fn handle_menu_event(app: &tauri::AppHandle, menu_id: &str) {
     "menu-select-all" => {
       window.emit("menu-select-all", ()).ok();
     },
+    "menu-add-next-occurrence" => {
+      window.emit("menu-add-next-occurrence", ()).ok();
+    },
+    "menu-select-all-occurrences" => {
+      window.emit("menu-select-all-occurrences", ()).ok();
+    },
     "menu-find" => {
       window.emit("menu-find", ()).ok();
     },
@@ -260,6 +321,9 @@ fn handle_menu_event(app: &tauri::AppHandle, menu_id: &str) {
     },
     "menu-go-to-line" => {
       window.emit("menu-go-to-line", ()).ok();
+    },
+    "menu-go-to-symbol" => {
+      window.emit("menu-go-to-symbol", ()).ok();
     },
     "menu-zoom-in" => {
       window.emit("menu-zoom-in", ()).ok();
@@ -270,11 +334,23 @@ fn handle_menu_event(app: &tauri::AppHandle, menu_id: &str) {
     "menu-zoom-reset" => {
       window.emit("menu-zoom-reset", ()).ok();
     },
+    "menu-jump-edit-back" => {
+      window.emit("menu-jump-edit-back", ()).ok();
+    },
+    "menu-jump-edit-forward" => {
+      window.emit("menu-jump-edit-forward", ()).ok();
+    },
     "menu-word-wrap" => {
       window.emit("menu-word-wrap", ()).ok();
     },
     "menu-status-bar" => {
       window.emit("menu-status-bar", ()).ok();
+    },
+    "menu-indent-guides" => {
+      window.emit("menu-indent-guides", ()).ok();
+    },
+    "menu-visible-whitespace" => {
+      window.emit("menu-visible-whitespace", ()).ok();
     },
     "menu-about" => {
       window.emit("menu-about", ()).ok();
@@ -308,6 +384,7 @@ pub fn run() {
       commands::file::get_pending_files,
       commands::file::frontend_ready,
       commands::window::set_window_title,
+      commands::window::print_current,
       commands::recovery::save_recovery_data,
       commands::recovery::check_recovery_data,
       commands::recovery::clear_recovery_data,

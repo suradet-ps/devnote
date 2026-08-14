@@ -5,6 +5,8 @@
   import StatusBar from '$lib/components/StatusBar.svelte';
   import FindReplace from '$lib/components/FindReplace.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+  import SymbolPicker from '$lib/components/SymbolPicker.svelte';
+  import type { SymbolInfo } from '$lib/editor/symbols';
   import { tabsStore, type Tab } from '$lib/stores/tabs.svelte';
   import { recentStore } from '$lib/stores/recent.svelte';
   import { settingsStore } from '$lib/stores/settings.svelte';
@@ -32,6 +34,28 @@
   let showGoToLine = $state(false);
   let goToLineValue = $state('');
   let showRecentDialog = $state(false);
+  let showIndentGuides = $state(false);
+  let showVisibleWhitespace = $state(false);
+  let showSymbolPicker = $state(false);
+  let symbolList = $state<SymbolInfo[]>([]);
+  let showPrintOverlay = $state(false);
+  let printContent = $state('');
+
+  async function handlePrint() {
+    const tab = tabsStore.activeTab;
+    if (!tab) return;
+    printContent = tab.content;
+    showPrintOverlay = true;
+    await tick();
+    try {
+      await ipc.printCurrent();
+    } catch (e) {
+      console.error('print failed', e);
+      showToast(t('print.failed'));
+    } finally {
+      showPrintOverlay = false;
+    }
+  }
   let recentDialogEl = $state<HTMLDivElement | null>(null);
   let toastMessage = $state('');
   let toastVisible = $state(false);
@@ -419,6 +443,15 @@
   function handleGlobalKeydown(e: KeyboardEvent) {
     const mod = e.metaKey || e.ctrlKey;
 
+    // Text-editing shortcuts must not hijack native editing while focus is
+    // in an input (find/replace, go-to-line, tab rename, symbol picker).
+    // Ctrl+V in the find field should paste into the field, not the editor.
+    const target = e.target as HTMLElement | null;
+    const inInput = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+    if (inInput && mod && (e.key === 'v' || e.key === 'c' || e.key === 'x' || e.key === 'a' || e.key === 'z')) {
+      return;
+    }
+
     if (mod && e.key === 'n') {
       e.preventDefault();
       tabsStore.newTab();
@@ -450,13 +483,13 @@
     } else if (mod && e.key === 'g') {
       e.preventDefault();
       showGoToLine = true;
-    } else if (mod && e.key === '=') {
+    } else if (mod && !e.altKey && e.key === '=') {
       e.preventDefault();
       settingsStore.increaseFontSize();
-    } else if (mod && e.key === '-') {
+    } else if (mod && !e.altKey && e.key === '-') {
       e.preventDefault();
       settingsStore.decreaseFontSize();
-    } else if (mod && e.key === '0') {
+    } else if (mod && !e.altKey && e.key === '0') {
       e.preventDefault();
       settingsStore.resetFontSize();
     } else if (e.altKey && e.key === 'z') {
@@ -494,6 +527,24 @@
       // (which checks for dirty tabs) runs.
       e.preventDefault();
       void handleCloseRequest();
+    } else if (mod && !e.shiftKey && e.key === 'd') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'add-next-occurrence' });
+    } else if (mod && e.shiftKey && e.key === 'l') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'select-all-occurrences' });
+    } else if (mod && e.shiftKey && e.key === 'p') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'go-to-symbol' });
+    } else if (mod && !e.shiftKey && e.key === 'p') {
+      e.preventDefault();
+      void handlePrint();
+    } else if (mod && e.altKey && e.key === '-') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'jump-edit-back' });
+    } else if (mod && e.altKey && e.key === '=') {
+      e.preventDefault();
+      dispatchEditorAction({ action: 'jump-edit-forward' });
     } else if (mod && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
       dispatchEditorAction({ action: 'undo' });
@@ -690,6 +741,12 @@
     };
     window.addEventListener('tab-close-request', tabCloseHandler);
 
+    const symbolsReadyHandler: EventListener = (e) => {
+      symbolList = (e as CustomEvent<SymbolInfo[]>).detail ?? [];
+      showSymbolPicker = true;
+    };
+    window.addEventListener('symbols-ready', symbolsReadyHandler);
+
     // Tauri menu events (emitted from Rust via window.emit). These are
     // NOT DOM events — they must be received via listen() from
     // @tauri-apps/api/event. The previous code used window.addEventListener
@@ -718,14 +775,22 @@
       listen('menu-copy', () => dispatchEditorAction({ action: 'copy' })),
       listen('menu-paste', () => dispatchEditorAction({ action: 'paste' })),
       listen('menu-select-all', () => dispatchEditorAction({ action: 'select-all' })),
+      listen('menu-add-next-occurrence', () => dispatchEditorAction({ action: 'add-next-occurrence' })),
+      listen('menu-select-all-occurrences', () => dispatchEditorAction({ action: 'select-all-occurrences' })),
       listen('menu-find', () => { showFindReplace = true; }),
       listen('menu-find-replace', () => { showFindReplace = true; }),
       listen('menu-go-to-line', () => { showGoToLine = true; }),
       listen('menu-zoom-in', () => settingsStore.increaseFontSize()),
       listen('menu-zoom-out', () => settingsStore.decreaseFontSize()),
       listen('menu-zoom-reset', () => settingsStore.resetFontSize()),
+      listen('menu-jump-edit-back', () => dispatchEditorAction({ action: 'jump-edit-back' })),
+      listen('menu-jump-edit-forward', () => dispatchEditorAction({ action: 'jump-edit-forward' })),
+      listen('menu-go-to-symbol', () => dispatchEditorAction({ action: 'go-to-symbol' })),
+      listen('menu-print', () => void handlePrint()),
       listen('menu-word-wrap', () => settingsStore.toggleWordWrap()),
       listen('menu-status-bar', () => settingsStore.toggleStatusBar()),
+      listen('menu-indent-guides', () => { showIndentGuides = !showIndentGuides; }),
+      listen('menu-visible-whitespace', () => { showVisibleWhitespace = !showVisibleWhitespace; }),
       listen<string>('menu-open-recent', (e) => { void handleOpenRecent(e.payload); }),
       listen('menu-about', () => {
         void showConfirmDialog(
@@ -808,6 +873,7 @@
       clearInterval(pendingPollHandle);
       document.removeEventListener('keydown', keydownListener, { capture: true });
       window.removeEventListener('tab-close-request', tabCloseHandler);
+      window.removeEventListener('symbols-ready', symbolsReadyHandler);
       // Context menu DOM listeners
       window.removeEventListener('menu-new-tab', contextMenuNewTab);
       window.removeEventListener('menu-open-file', contextMenuOpenFile);
@@ -844,6 +910,15 @@
         show={showFindReplace}
         onClose={() => showFindReplace = false}
       />
+      <SymbolPicker
+        open={showSymbolPicker}
+        symbols={symbolList}
+        onSelect={(s) => {
+          showSymbolPicker = false;
+          dispatchEditorAction({ action: 'jump-to-symbol', line: s.line });
+        }}
+        onClose={() => showSymbolPicker = false}
+      />
       {#if showGoToLine}
         <div class="goto-line-panel" role="dialog" aria-label={t('goto.label')}>
           <input
@@ -865,6 +940,8 @@
           tabId={activeTab?.id ?? ''}
           content={activeTab?.content ?? ''}
           language={activeTab?.language ?? 'text'}
+          indentGuides={showIndentGuides}
+          visibleWhitespace={showVisibleWhitespace}
           onContentChange={handleContentChange}
           onCursorUpdate={handleCursorUpdate}
         />
@@ -910,6 +987,16 @@
     <div class="toast" role="alert">{toastMessage}</div>
   {/if}
 </div>
+
+{#if showPrintOverlay}
+  <div class="print-overlay">
+    <div class="print-header">
+      <span class="print-title">{t('print.title')} — {activeTab?.fileName ?? ''}</span>
+      <button class="print-cancel" onclick={() => showPrintOverlay = false}>{t('dialog.cancel')}</button>
+    </div>
+    <pre class="print-body">{printContent}</pre>
+  </div>
+{/if}
 
 <ConfirmDialog
   open={confirmOpen}
@@ -1086,5 +1173,71 @@
   .recent-item:hover {
     background: var(--surface-soft);
     color: var(--ink);
+  }
+
+  .print-overlay {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    color: #111;
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .print-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--sp-sm) var(--sp-md);
+    border-bottom: 1px solid var(--hairline);
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .print-title {
+    font-weight: 500;
+    color: var(--body);
+  }
+
+  .print-cancel {
+    padding: var(--sp-xxs) var(--sp-sm);
+    border-radius: var(--r-sm);
+    color: var(--muted);
+  }
+
+  .print-cancel:hover {
+    background: var(--surface-soft);
+    color: var(--ink);
+  }
+
+  .print-body {
+    flex: 1;
+    overflow: auto;
+    padding: var(--sp-lg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  @media print {
+    .app {
+      display: none;
+    }
+
+    .print-overlay {
+      position: static;
+    }
+
+    .print-header {
+      display: none;
+    }
+
+    .print-body {
+      overflow: visible;
+      padding: 0;
+    }
   }
 </style>

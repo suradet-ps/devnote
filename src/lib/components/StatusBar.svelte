@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tabsStore } from '$lib/stores/tabs.svelte';
   import { settingsStore } from '$lib/stores/settings.svelte';
+  import { editorStatus } from '$lib/stores/editor-status.svelte';
   import { requestIdleCallbackShim, cancelIdleCallbackShim } from '$lib/utils/idle';
   import { t } from '$lib/i18n/i18n.svelte';
 
@@ -206,6 +207,12 @@
       <span class="statusbar-item">{lineEnding}</span>
     </div>
     <div class="statusbar-right" aria-hidden="true">
+      {#if editorStatus.selectionChars > 0}
+        <span class="statusbar-item statusbar-selection">
+          {t('status.selectionWords', { count: editorStatus.selectionWords })} · {t('status.selectionChars', { count: editorStatus.selectionChars })}
+        </span>
+        <span class="statusbar-sep">·</span>
+      {/if}
       <span class="statusbar-item">{t('status.lineCol', { line, col })}</span>
       <span class="statusbar-sep">·</span>
       <span class="statusbar-item">{t('status.words', { count: wordCount })}</span>
@@ -277,6 +284,11 @@
 
   .statusbar-tag {
     color: var(--accent-amber);
+    font-weight: 500;
+  }
+
+  .statusbar-selection {
+    color: var(--primary);
     font-weight: 500;
   }
 

@@ -36,6 +36,8 @@ import { lintKeymap } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { devnoteLightTheme } from './theme';
 import { getLanguage } from './extensions';
+import { indentGuidesCompartment } from './guides';
+import { whitespaceCompartment } from './whitespace';
 import type { Settings } from '$lib/stores/settings.svelte';
 
 export const wrapCompartment = new Compartment();
@@ -50,6 +52,7 @@ export function createEditorState(
   language: string,
   onChange: (value: string) => void,
   onSelectionChange: (view: EditorView) => void,
+  onDocChanged?: (view: EditorView) => void,
 ): EditorState {
   const langExtension = getLanguage(language);
 
@@ -97,9 +100,12 @@ export function createEditorState(
         }),
       ),
       langCompartment.of(initialLang),
+      indentGuidesCompartment.of([]),
+      whitespaceCompartment.of([]),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onChange(update.state.doc.toString());
+          onDocChanged?.(update.view);
         }
         if (update.selectionSet) {
           onSelectionChange(update.view);

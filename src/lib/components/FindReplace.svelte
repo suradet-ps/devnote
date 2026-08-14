@@ -98,7 +98,10 @@
       <button
         class="find-option"
         class:active={caseSensitive}
-        onclick={() => { caseSensitive = !caseSensitive; }}
+        onclick={() => {
+          caseSensitive = !caseSensitive;
+          dispatchEditorAction({ action: 'search', query, caseSensitive: !caseSensitive, useRegex });
+        }}
         title={t('find.matchCase')}
         aria-label={t('find.matchCase')}
         aria-pressed={caseSensitive}
@@ -106,7 +109,10 @@
       <button
         class="find-option"
         class:active={useRegex}
-        onclick={() => { useRegex = !useRegex; }}
+        onclick={() => {
+          useRegex = !useRegex;
+          dispatchEditorAction({ action: 'search', query, caseSensitive, useRegex: !useRegex });
+        }}
         title={t('find.useRegex')}
         aria-label={t('find.useRegex')}
         aria-pressed={useRegex}
