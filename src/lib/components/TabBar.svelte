@@ -5,6 +5,70 @@
   let showContextMenu = $state(false);
   let contextMenuPos = $state({ x: 0, y: 0 });
   let contextMenuTabId = $state('');
+  let contextMenuEl = $state<HTMLDivElement | null>(null);
+  let contextMenuReturnFocus: HTMLElement | null = null;
+  let tabEls = $state<Record<string, HTMLDivElement>>({});
+
+  /** ARIA tabs pattern: arrows move focus + activate; Home/End jump. */
+  function handleTabsKeydown(e: KeyboardEvent) {
+    const ids = tabsStore.tabs.map((t) => t.id);
+    if (ids.length === 0) return;
+    const currentIdx = ids.indexOf(tabsStore.activeTabId ?? '');
+    let targetIdx = -1;
+    if (e.key === 'ArrowRight') targetIdx = (currentIdx + 1) % ids.length;
+    else if (e.key === 'ArrowLeft') targetIdx = (currentIdx - 1 + ids.length) % ids.length;
+    else if (e.key === 'Home') targetIdx = 0;
+    else if (e.key === 'End') targetIdx = ids.length - 1;
+    if (targetIdx === -1) return;
+    e.preventDefault();
+    tabsStore.setActive(ids[targetIdx]);
+    tabEls[ids[targetIdx]]?.focus();
+  }
+
+  /** Menu keyboard: arrows cycle items, Tab wraps, Escape closes. */
+  function handleMenuKeydown(e: KeyboardEvent) {
+    const items = Array.from(
+      contextMenuEl?.querySelectorAll<HTMLButtonElement>('.context-menu-item') ?? [],
+    );
+    if (items.length === 0) return;
+    const idx = items.indexOf(document.activeElement as HTMLButtonElement);
+    let targetIdx = -1;
+    if (e.key === 'ArrowDown') targetIdx = (idx + 1) % items.length;
+    else if (e.key === 'ArrowUp') targetIdx = (idx - 1 + items.length) % items.length;
+    else if (e.key === 'Home') targetIdx = 0;
+    else if (e.key === 'End') targetIdx = items.length - 1;
+    else if (e.key === 'Tab') targetIdx = e.shiftKey ? (idx - 1 + items.length) % items.length : (idx + 1) % items.length;
+    if (targetIdx !== -1) {
+      e.preventDefault();
+      items[targetIdx]?.focus();
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeContextMenu();
+    }
+  }
+
+  function handleContextMenu(e: MouseEvent, tabId: string) {
+    contextMenuPos = { x: e.clientX, y: e.clientY };
+    contextMenuTabId = tabId;
+    contextMenuReturnFocus = document.activeElement as HTMLElement | null;
+    showContextMenu = true;
+  }
+
+  function closeContextMenu() {
+    showContextMenu = false;
+    contextMenuReturnFocus?.focus();
+    contextMenuReturnFocus = null;
+  }
+
+  // Focus the first item when the menu opens
+  $effect(() => {
+    if (showContextMenu) {
+      const first = contextMenuEl?.querySelector<HTMLButtonElement>('.context-menu-item');
+      first?.focus();
+    }
+  });
 
   function handleNewTab() {
     tabsStore.newTab();
@@ -30,16 +94,6 @@
     } else {
       tabsStore.forceCloseTab(id);
     }
-  }
-
-  function handleContextMenu(e: MouseEvent, tabId: string) {
-    contextMenuPos = { x: e.clientX, y: e.clientY };
-    contextMenuTabId = tabId;
-    showContextMenu = true;
-  }
-
-  function closeContextMenu() {
-    showContextMenu = false;
   }
 
   function emit(name: string, detail?: unknown) {
@@ -114,9 +168,10 @@
 </script>
 
 <div class="tabbar" role="tablist" aria-label="Open files">
-  <div class="tabbar-scroll">
+  <div class="tabbar-scroll" role="presentation" onkeydown={handleTabsKeydown}>
     {#each tabsStore.tabs as tab, idx (tab.id)}
       <Tab
+        element={(el) => { if (el) tabEls[tab.id] = el; }}
         fileName={tab.fileName}
         isDirty={tab.content !== tab.savedContent}
         isActive={tab.id === tabsStore.activeTabId}
@@ -150,9 +205,12 @@
   >
     <div
       class="context-menu"
+      bind:this={contextMenuEl}
       style="left: {contextMenuPos.x}px; top: {contextMenuPos.y}px;"
       role="menu"
+      tabindex="-1"
       aria-label="Tab actions"
+      onkeydown={handleMenuKeydown}
     >
       <button class="context-menu-item" role="menuitem" onclick={() => { emit('menu-new-tab'); closeContextMenu(); }}>
         <span>New Tab</span>

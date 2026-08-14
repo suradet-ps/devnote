@@ -4,6 +4,7 @@
     isDirty: boolean;
     isActive: boolean;
     tabIndex: number;
+    element?: (el: HTMLDivElement | null) => void;
     onclick: () => void;
     onmiddleclick: () => void;
     onclose: () => void;
@@ -16,7 +17,7 @@
   }
 
   let {
-    fileName, isDirty, isActive, tabIndex,
+    fileName, isDirty, isActive, tabIndex, element,
     onclick, onmiddleclick, onclose, oncontextmenu, onrename,
     ondragstart, ondragover, ondrop, ondragend,
   }: Props = $props();
@@ -24,6 +25,11 @@
   let editing = $state(false);
   let editValue = $state('');
   let inputEl = $state<HTMLInputElement | null>(null);
+  let rootEl = $state<HTMLDivElement | null>(null);
+
+  $effect(() => {
+    element?.(rootEl);
+  });
 
   function handleDblClick() {
     editValue = fileName;
@@ -61,10 +67,11 @@
 <div
   class="tab"
   class:active={isActive}
+  bind:this={rootEl}
   role="tab"
   aria-selected={isActive}
   aria-label="{fileName}{isDirty ? ' (unsaved)' : ''}"
-  tabindex="-1"
+  tabindex={isActive ? 0 : -1}
   draggable="true"
   onclick={onclick}
   ondblclick={handleDblClick}
@@ -74,7 +81,12 @@
   ondragover={ondragover}
   ondrop={ondrop}
   ondragend={ondragend}
-  onkeydown={(e) => e.key === 'Enter' && onclick()}
+  onkeydown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onclick();
+    }
+  }}
 >
   {#if editing}
     <input
