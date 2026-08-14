@@ -292,7 +292,7 @@ pub async fn save_file(
   }
 
   let data = encode_content(&content, &le, &enc);
-  write_atomic(&p, &data).await
+  write_atomic(&p, data).await
 }
 
 #[tauri::command]
@@ -345,7 +345,7 @@ pub async fn save_file_as(
       let enc = encoding.unwrap_or_else(|| "UTF-8".to_string());
       let data = encode_content(&content, &le, &enc);
       let p = PathBuf::from(&path_str);
-      write_atomic(&p, &data).await?;
+      write_atomic(&p, data).await?;
       Ok(Some(path_str))
     },
     None => Ok(None),
@@ -355,7 +355,12 @@ pub async fn save_file_as(
 /// Atomic write: write to a uniquely-named temp file in the same directory,
 /// fsync, then rename over the target. Falls back to copy+delete on
 /// cross-filesystem rename (EXDEV).
-async fn write_atomic(target: &Path, data: &[u8]) -> Result<(), String> {
+///
+/// `data` is moved in (never copied): for a 100 MB document the caller's
+/// buffer is streamed to disk in chunks instead of duplicating it in memory.
+async fn write_atomic(target: &Path, data: Vec<u8>) -> Result<(), String> {
+  const CHUNK_BYTES: usize = 1024 * 1024; // 1 MB
+
   let parent = target
     .parent()
     .filter(|p| !p.as_os_str().is_empty())
@@ -364,20 +369,19 @@ async fn write_atomic(target: &Path, data: &[u8]) -> Result<(), String> {
 
   let target_buf = target.to_path_buf();
   let parent_for_task = parent.clone();
-  let data_vec = data.to_vec();
 
   let persist_outcome =
     tokio::task::spawn_blocking(move || -> Result<(), (PathBuf, std::io::Error)> {
       let mut temp =
         NamedTempFile::new_in(&parent_for_task).map_err(|e| (parent_for_task.clone(), e))?;
-      temp
-        .as_file_mut()
-        .write_all(&data_vec)
-        .map_err(|e| (temp.path().to_path_buf(), e))?;
-      temp
-        .as_file_mut()
-        .sync_all()
-        .map_err(|e| (temp.path().to_path_buf(), e))?;
+      {
+        let temp_path = temp.path().to_path_buf();
+        let file = temp.as_file_mut();
+        for chunk in data.chunks(CHUNK_BYTES) {
+          file.write_all(chunk).map_err(|e| (temp_path.clone(), e))?;
+        }
+        file.sync_all().map_err(|e| (temp_path, e))?;
+      }
       match temp.persist(&target_buf) {
         Ok(_) => Ok(()),
         Err(persist_err) => {
@@ -762,6 +766,30 @@ mod tests {
       .collect();
     assert_eq!(names, vec!["t.txt"]);
     assert_eq!(tokio::fs::read_to_string(&path).await.unwrap(), "hello");
+  }
+
+  #[tokio::test]
+  async fn large_file_save_round_trips_without_temp_leftovers() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("large.bin");
+    // Multi-chunk payload (> 8 chunks of 1 MB) exercises the chunked writer
+    let content = "x".repeat(10 * 1024 * 1024 + 123);
+    save_file(
+      path.to_string_lossy().to_string(),
+      content.clone(),
+      Some("LF".to_string()),
+      Some("UTF-8".to_string()),
+    )
+    .await
+    .unwrap();
+    let bytes = tokio::fs::read(&path).await.unwrap();
+    assert_eq!(bytes.len(), content.len());
+    assert!(bytes.iter().all(|&b| b == b'x'));
+    let names: Vec<String> = std::fs::read_dir(dir.path())
+      .unwrap()
+      .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+      .collect();
+    assert_eq!(names, vec!["large.bin"]);
   }
 
   #[cfg(windows)]
