@@ -50,6 +50,9 @@ jobs:
       - name: Vitest unit tests
         run: bun run test
 
+      - name: Vite production build
+        run: bun run build
+
   # ── Backend: Rust check + clippy + test ───────────────────────────
   backend:
     name: Backend (${{ matrix.os }})
