@@ -178,3 +178,21 @@ jobs:
 
       - name: cargo audit (RustSec advisory DB)
         run: cargo audit
+
+  # ── Conventional Commits: enforce PR title style for automated changelog ──
+  conventional-commits:
+    name: Conventional Commits (PR title)
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Validate PR title
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "Validating PR title: $PR_TITLE"
+          if ! echo "$PR_TITLE" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_.-]+\))?!?: .+'; then
+            echo "::error::PR title must follow Conventional Commits: <type>(<scope>)!: <description>"
+            exit 1
+          fi
