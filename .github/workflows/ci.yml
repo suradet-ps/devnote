@@ -153,3 +153,28 @@ jobs:
 
       - name: Tauri release build (deb bundle smoke)
         run: bun run tauri build --bundles deb
+
+  # ── Dependency hygiene: licenses (cargo-deny) + advisories (cargo-audit) ──
+  dependency-gate:
+    name: Dependency Gate (deny + audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - uses: taiki-e/install-action@82cd3e7658a6f96c86c0234aeeda1748937cb0a1 # v2
+        with:
+          tool: cargo-deny, cargo-audit
+
+      - name: cargo deny check (licenses + bans + sources + advisories)
+        run: cargo deny check
+
+      - name: cargo audit (RustSec advisory DB)
+        run: cargo audit

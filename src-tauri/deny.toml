@@ -1,0 +1,33 @@
+# cargo-deny configuration for devnote.
+#
+# Policy (see docs/ROADMAP.md Phase 1 + Phase 8): permissive licenses only;
+# no GPL/copyleft without an explicit, documented exception. MPL-2.0 (Mozilla
+# weak copyleft, pulled in by the Servo CSS stack: cssparser/selectors) is
+# allowed deliberately, matching cargo-deny's own default template.
+
+[licenses]
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+exceptions = [
+    { name = "chardet", version = "*", license = "LGPL-3.0", note = "EXPLICIT EXCEPTION (Roadmap Phase 1/8): charset-detection helper, direct dependency. LGPL-3.0 weak copyleft accepted deliberately for the offline encoding-detection feature; obligations documented in docs/ROADMAP.md. Revisit a permissive replacement (e.g. chardetng) when convenient." },
+]
+
+[bans]
+multiple-versions = "warn"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
