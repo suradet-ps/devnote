@@ -4,7 +4,8 @@
   import { undo, redo, selectAll } from '@codemirror/commands';
   import { openSearchPanel, selectMatches, selectNextOccurrence } from '@codemirror/search';
   import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
-  import { createEditorState, reconfigureView, reconfigureLanguage } from '$lib/codemirror/setup';
+  import { createEditorState, reconfigureView, reconfigureLanguage, langCompartment } from '$lib/codemirror/setup';
+  import { getLanguage } from '$lib/codemirror/extensions';
   import { reconfigureIndentGuides } from '$lib/codemirror/guides';
   import { reconfigureVisibleWhitespace } from '$lib/codemirror/whitespace';
   import { onEditorAction, type EditorAction } from '$lib/editor/actions';
@@ -32,6 +33,7 @@
   let editorEl: HTMLDivElement | undefined = $state();
   let view: EditorView | null = null;
   let lastTabId: string | null = null;
+  let currentLanguage = '';
   let suppressNextUpdate = false;
   let pendingCursorFrame: number | null = null;
   let editHistory = new EditHistory();
@@ -63,6 +65,7 @@
   function createEditor(doc: string, lang: string) {
     destroyEditor();
     if (!editorEl) return;
+    currentLanguage = lang;
 
     const state = createEditorState(
       doc,
@@ -165,8 +168,18 @@
         break;
       }
       case 'go-to-symbol': {
-        const syms = extractSymbols(view.state);
-        window.dispatchEvent(new CustomEvent('symbols-ready', { detail: syms }));
+        // The language pack may still be loading (async import). Ensure it is
+        // applied before extracting, otherwise the parse tree is empty.
+        void (async () => {
+          const langExt = getLanguage(currentLanguage);
+          if (langExt instanceof Promise) {
+            const resolved = await langExt;
+            view?.dispatch({ effects: [langCompartment.reconfigure(resolved)] });
+          }
+          if (!view) return;
+          const syms = extractSymbols(view.state);
+          window.dispatchEvent(new CustomEvent('symbols-ready', { detail: syms }));
+        })();
         break;
       }
       case 'jump-to-symbol': {

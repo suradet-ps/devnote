@@ -1,5 +1,5 @@
 import type { EditorState } from '@codemirror/state';
-import { syntaxTree } from '@codemirror/language';
+import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import type { SyntaxNode } from '@lezer/common';
 
 /**
@@ -79,8 +79,14 @@ function nodeName(state: EditorState, node: SyntaxNode): string {
 }
 
 export function extractSymbols(state: EditorState): SymbolInfo[] {
+  // lezer only parses the first ~3000 chars synchronously when a language is
+  // (re)configured; the rest is parsed lazily by the view. ensureSyntaxTree
+  // forces the parse forward (budgeted) and returns the complete tree — the
+  // state field itself keeps the stale partial tree.
+  const tree = ensureSyntaxTree(state, state.doc.length, 250) ?? syntaxTree(state);
+
   const symbols: SymbolInfo[] = [];
-  const cursor = syntaxTree(state).cursor();
+  const cursor = tree.cursor();
 
   do {
     const node = cursor.node;
