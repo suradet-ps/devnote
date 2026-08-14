@@ -443,6 +443,15 @@
   function handleGlobalKeydown(e: KeyboardEvent) {
     const mod = e.metaKey || e.ctrlKey;
 
+    // Text-editing shortcuts must not hijack native editing while focus is
+    // in an input (find/replace, go-to-line, tab rename, symbol picker).
+    // Ctrl+V in the find field should paste into the field, not the editor.
+    const target = e.target as HTMLElement | null;
+    const inInput = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+    if (inInput && mod && (e.key === 'v' || e.key === 'c' || e.key === 'x' || e.key === 'a' || e.key === 'z')) {
+      return;
+    }
+
     if (mod && e.key === 'n') {
       e.preventDefault();
       tabsStore.newTab();

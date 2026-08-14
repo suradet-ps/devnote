@@ -9,7 +9,7 @@
   import { reconfigureIndentGuides } from '$lib/codemirror/guides';
   import { reconfigureVisibleWhitespace } from '$lib/codemirror/whitespace';
   import { onEditorAction, type EditorAction } from '$lib/editor/actions';
-  import { findNextFrom, replaceAll } from '$lib/editor/search';
+  import { findNextFrom, replaceAll, findAll } from '$lib/editor/search';
   import { EditHistory } from '$lib/editor/edit-history';
   import { extractSymbols } from '$lib/editor/symbols';
   import { settingsStore } from '$lib/stores/settings.svelte';
@@ -37,6 +37,17 @@
   let suppressNextUpdate = false;
   let pendingCursorFrame: number | null = null;
   let editHistory = new EditHistory();
+  let searchQuery = '';
+  let searchMatches: { from: number; to: number }[] = [];
+  let searchIndex = -1;
+
+  function jumpToMatch(targetView: EditorView, m: { from: number; to: number }) {
+    targetView.dispatch({
+      selection: { anchor: m.from, head: m.to },
+      effects: EditorView.scrollIntoView(m.from, { y: 'center' }),
+    });
+    targetView.focus();
+  }
 
   function jumpToPos(targetView: EditorView, pos: number) {
     const clamped = Math.min(Math.max(0, pos), targetView.state.doc.length);
@@ -109,6 +120,9 @@
     view = new EditorView({ state, parent: editorEl });
     lastTabId = tabId;
     editHistory = new EditHistory();
+    searchQuery = '';
+    searchMatches = [];
+    searchIndex = -1;
     editorStatus.__setSelection(0, 0);
     view.focus();
     // If the language pack is async, apply it when it resolves
@@ -197,6 +211,47 @@
       case 'find-replace':
         openSearchPanel(view);
         break;
+      case 'search': {
+        const { query, caseSensitive, useRegex } = action;
+        const opts = { caseSensitive, useRegex };
+        searchQuery = query;
+        const doc = view.state.doc.toString();
+        searchMatches = query ? findAll(doc, query, opts) : [];
+        if (searchMatches.length === 0) {
+          searchIndex = -1;
+          break;
+        }
+        const pos = view.state.selection.main.head;
+        let idx = searchMatches.findIndex((m) => m.to > pos);
+        if (idx === -1) idx = 0;
+        searchIndex = idx;
+        jumpToMatch(view, searchMatches[idx]);
+        break;
+      }
+      case 'search-next': {
+        if (searchQuery === '') break;
+        if (searchMatches.length === 0) {
+          const { query, caseSensitive, useRegex } = action;
+          const opts = { caseSensitive, useRegex };
+          searchMatches = findAll(view.state.doc.toString(), searchQuery || query, opts);
+        }
+        if (searchMatches.length === 0) break;
+        searchIndex = (searchIndex + 1) % searchMatches.length;
+        jumpToMatch(view, searchMatches[searchIndex]);
+        break;
+      }
+      case 'search-prev': {
+        if (searchQuery === '') break;
+        if (searchMatches.length === 0) {
+          const { query, caseSensitive, useRegex } = action;
+          const opts = { caseSensitive, useRegex };
+          searchMatches = findAll(view.state.doc.toString(), searchQuery || query, opts);
+        }
+        if (searchMatches.length === 0) break;
+        searchIndex = (searchIndex - 1 + searchMatches.length) % searchMatches.length;
+        jumpToMatch(view, searchMatches[searchIndex]);
+        break;
+      }
       case 'set-language': {
         if (action.language) {
           reconfigureLanguage(view, action.language);
@@ -250,9 +305,6 @@
         }
         break;
       }
-      // search/search-prev/search-next are handled by CodeMirror's built-in
-      // search panel once openSearchPanel is active; FindReplace dispatches
-      // them to keep the query in sync with the panel.
     }
   }
 
