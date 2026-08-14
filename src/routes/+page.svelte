@@ -31,6 +31,7 @@
   let showGoToLine = $state(false);
   let goToLineValue = $state('');
   let showRecentDialog = $state(false);
+  let recentDialogEl = $state<HTMLDivElement | null>(null);
   let toastMessage = $state('');
   let toastVisible = $state(false);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -397,6 +398,19 @@
       (async () => {
         await tick();
         document.querySelector<HTMLInputElement>('.goto-line-input')?.focus();
+      })();
+    }
+  });
+
+  // Focus the recent-files dialog when it opens
+  $effect(() => {
+    if (showRecentDialog) {
+      void (async () => {
+        await tick();
+        recentDialogEl
+          ?.querySelector<HTMLButtonElement>('.recent-item, .recent-empty')
+          ?.focus();
+        recentDialogEl?.focus();
       })();
     }
   });
@@ -864,8 +878,17 @@
   <StatusBar />
 
   {#if showRecentDialog}
-    <div class="toast-backdrop" onclick={() => showRecentDialog = false} onkeydown={() => {}} role="presentation">
-      <div class="recent-dialog" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog" tabindex="-1">
+    <div class="toast-backdrop" onclick={() => showRecentDialog = false} role="presentation">
+      <div
+        class="recent-dialog"
+        bind:this={recentDialogEl}
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => { if (e.key === 'Escape') showRecentDialog = false; }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Open Recent"
+        tabindex="-1"
+      >
         <h3>Open Recent</h3>
         {#if recentStore.recentFiles.length === 0}
           <p class="recent-empty">No recent files</p>

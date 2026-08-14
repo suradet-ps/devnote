@@ -32,6 +32,7 @@
   }: Props = $props();
 
   let dialogEl: HTMLDivElement | undefined = $state();
+  let returnFocusEl: HTMLElement | null = null;
 
   // Esc closes the dialog while it is open. The previous implementation
   // attached the handler to a `role="presentation"` div which is not
@@ -49,14 +50,50 @@
     return () => document.removeEventListener('keydown', handler, { capture: true });
   });
 
-  // Focus the primary (Save) button on open for keyboard users.
+  // Focus the primary (Save) button on open for keyboard users, and remember
+  // where focus came from so we can return it when the dialog closes.
   $effect(() => {
     if (!open) return;
+    returnFocusEl = document.activeElement as HTMLElement | null;
     void (async () => {
       await tick();
-      const btn = dialogEl?.querySelector<HTMLButtonElement>('.dialog-btn-save');
-      btn?.focus();
+      dialogEl
+        ?.querySelector<HTMLButtonElement>('.dialog-btn')
+        ?.focus();
     })();
+  });
+
+  // Focus trap: Tab / Shift+Tab cycle inside the dialog only.
+  $effect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusables = Array.from(
+        dialogEl?.querySelectorAll<HTMLElement>('button') ?? [],
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handler, { capture: true });
+    return () => document.removeEventListener('keydown', handler, { capture: true });
+  });
+
+  // Return focus to the previously focused element (usually the editor).
+  $effect(() => {
+    if (!open && returnFocusEl) {
+      const el = returnFocusEl;
+      returnFocusEl = null;
+      el.focus();
+    }
   });
 </script>
 
@@ -72,6 +109,7 @@
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => e.stopPropagation()}
       role="alertdialog"
+      aria-modal="true"
       aria-labelledby="dialog-title"
       aria-describedby="dialog-message"
       tabindex="-1"
