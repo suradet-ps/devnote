@@ -11,6 +11,7 @@
   import { findNextFrom, replaceAll } from '$lib/editor/search';
   import { EditHistory } from '$lib/editor/edit-history';
   import { settingsStore } from '$lib/stores/settings.svelte';
+  import { editorStatus } from '$lib/stores/editor-status.svelte';
 
   interface Props {
     tabId: string;
@@ -80,6 +81,17 @@
           const pos = view.state.selection.main.head;
           const line = view.state.doc.lineAt(pos);
           onCursorUpdate(line.number, pos - line.from + 1);
+          // Selection stats (chars + words across all ranges)
+          let chars = 0;
+          const parts: string[] = [];
+          for (const range of view.state.selection.ranges) {
+            if (range.empty) continue;
+            const text = view.state.sliceDoc(range.from, range.to);
+            chars += text.length;
+            parts.push(text);
+          }
+          const words = parts.join(' ').split(/\s+/).filter(Boolean).length;
+          editorStatus.__setSelection(chars, words);
         });
       },
       (view) => {
@@ -93,6 +105,7 @@
     view = new EditorView({ state, parent: editorEl });
     lastTabId = tabId;
     editHistory = new EditHistory();
+    editorStatus.__setSelection(0, 0);
     view.focus();
     // If the language pack is async, apply it when it resolves
     reconfigureLanguage(view, lang);
