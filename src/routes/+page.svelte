@@ -11,6 +11,7 @@
   import { ipc } from '$lib/tauri/ipc';
   import { dispatchEditorAction } from '$lib/editor/actions';
   import { errorMessage } from '$lib/utils/error';
+  import { recoveryHash } from '$lib/utils/recovery';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { listen as listenTauriEvent, type UnlistenFn } from '@tauri-apps/api/event';
   import type { FilePayload, RecoveryEntry } from '$lib/types/ipc';
@@ -510,7 +511,7 @@
       saved_at: new Date().toISOString(),
     }));
     // Skip the IPC roundtrip if nothing has changed since the last save
-    const hash = JSON.stringify(tabs);
+    const hash = recoveryHash(tabs);
     if (hash === lastRecoveryHash) return;
     lastRecoveryHash = hash;
     try {

@@ -120,4 +120,65 @@ describe('tabsStore', () => {
     tabsStore.reorder(0, 0);
     expect(tabsStore.tabs.map((t) => t.id)).toEqual(before);
   });
+
+  it('untitled counter produces unique file names across closes', () => {
+    const a = tabsStore.newTab();
+    const b = tabsStore.newTab();
+    const c = tabsStore.newTab();
+    const names = tabsStore.tabs.map((t) => t.fileName);
+    expect(new Set(names).size).toBe(3);
+    // ensureOneTab() only fires when the last tab is closed — and it must
+    // consume a fresh counter value so names never collide with history
+    tabsStore.forceCloseTab(a.id);
+    tabsStore.forceCloseTab(b.id);
+    tabsStore.forceCloseTab(c.id);
+    expect(tabsStore.tabs.length).toBe(1);
+    expect(tabsStore.tabs[0].fileName).toBe('untitled-4');
+  });
+
+  it('markSaved updates fileName, path and language from the new path', () => {
+    const t = tabsStore.newTab();
+    tabsStore.updateContent(t.id, 'fn main() {}');
+    tabsStore.markSaved(t.id, '/a/b/main.rs');
+    const saved = tabsStore.tabs[0];
+    expect(saved.fileName).toBe('main.rs');
+    expect(saved.path).toBe('/a/b/main.rs');
+    expect(saved.language).toBe('rust');
+    expect(saved.content).toBe('fn main() {}');
+  });
+
+  it('forceCloseTab removes a dirty tab and keeps at least one tab', () => {
+    const t = tabsStore.newTab();
+    tabsStore.updateContent(t.id, 'typed');
+    expect(tabsStore.hasDirtyTabs()).toBe(true);
+    tabsStore.forceCloseTab(t.id);
+    expect(tabsStore.tabs.length).toBe(1);
+    expect(tabsStore.tabs[0].id).not.toBe(t.id);
+  });
+
+  it('closing the active middle tab activates the next neighbor', () => {
+    const a = tabsStore.newTab();
+    const b = tabsStore.newTab();
+    const c = tabsStore.newTab();
+    tabsStore.setActive(b.id);
+    expect(tabsStore.closeTab(b.id)).toBe(true);
+    expect(tabsStore.activeTabId).toBe(c.id);
+  });
+
+  it('closing the active last tab activates the previous neighbor', () => {
+    const a = tabsStore.newTab();
+    const b = tabsStore.newTab();
+    const c = tabsStore.newTab();
+    tabsStore.setActive(c.id);
+    tabsStore.closeTab(c.id);
+    expect(tabsStore.activeTabId).toBe(b.id);
+  });
+
+  it('closing an inactive tab does not move the active tab', () => {
+    const a = tabsStore.newTab();
+    const b = tabsStore.newTab();
+    tabsStore.setActive(a.id);
+    tabsStore.closeTab(b.id);
+    expect(tabsStore.activeTabId).toBe(a.id);
+  });
 });

@@ -34,9 +34,9 @@ code wins, and STATUS reflects the code.
 |---|---|---|
 | Open / Read / Save / Save As | done | dialog-driven; Rust-only (no renderer `fs`) |
 | Path validation | done | absolute + canonicalized; symlink-escape guarded |
-| Encoding detection | done | `chardet` + `encoding_rs`; UTF-8 / UTF-16LE / UTF-16BE / Windows-1252 |
-| Line-ending preservation | done | LF / CRLF / CR detected + preserved on save |
-| Binary (NUL) detection | done | refuses to open files containing NUL bytes |
+| Encoding detection | done | `chardet` + `encoding_rs`; UTF-8 / UTF-16LE / UTF-16BE / Windows-1252 (UTF-16 needs BOM; NUL-byte binary check bypassed for UTF-16 BOM files) |
+| Line-ending preservation | done | LF / CRLF / CR detected + preserved on save; cross-normalization on explicit LF/CRLF/CR target |
+| Binary (NUL) detection | done | refuses to open files containing NUL bytes (except UTF-16 BOM files) |
 | Size caps | done | 10 MB soft (confirm) / 200 MB hard (refuse) |
 | Atomic save | done | `tempfile::NamedTempFile` + rename in same dir |
 | Permission-denied fallback | done | offers "Save Copy" |
@@ -74,7 +74,7 @@ code wins, and STATUS reflects the code.
 
 | Capability | Status | Notes |
 |---|---|---|
-| Autosave (15 s, hash-coalesced) | done | `{app_data_dir}/recovery/` |
+| Autosave (15 s, hash-coalesced) | done | `{app_data_dir}/recovery/`; hash on path+content (not `saved_at`) so unchanged tabs skip the write |
 | Restore-on-launch prompt | done | Cancel keeps recovery data intact |
 | Clear after Restore/Discard | done | `clear_recovery_data` |
 | File logging | done | `{app_data_dir}/logs/devnote.log` |
@@ -86,7 +86,8 @@ code wins, and STATUS reflects the code.
 | Capability | Status | Notes |
 |---|---|---|
 | `tauri-plugin-store` persistence | done | `.settings.dat`; localStorage fallback |
-| Legacy migration | done | migrates `sabot-settings` / `devnote-settings` on first load |
+| Legacy migration | done | migrates `sabot-settings` / `devnote-settings` on first load (newest key wins) |
+| Value sanitization | done | unknown keys / out-of-range values fall back to defaults (Phase 2) |
 | `theme: system` | done | `prefers-color-scheme` media query |
 | `showStatusBar` | done | toggle (v0.2.0+) |
 | font size / tab size / insert spaces / wrap | done | all persisted |
@@ -129,7 +130,7 @@ code wins, and STATUS reflects the code.
 | Regex / case-sensitive / whole-word | done | CM `SearchQuery` |
 | Match count + nav (Enter/Shift+Enter) | done | `3 of 12` badge |
 | Replace / Replace All | done | |
-| Pure-logic extraction for tests | **open** | embedded in component; Roadmap Phase 2 |
+| Pure-logic extraction for tests | done | `lib/editor/search.ts` (findAll / countMatches / findNextFrom / replaceAll); replace + replace-all wired into Editor |
 
 ---
 
@@ -180,7 +181,7 @@ code wins, and STATUS reflects the code.
 | `bun run check` (svelte-check) | done | |
 | `bun run test` (vitest) | done | utils / stores / actions covered |
 | `cargo test --lib` | done | `detect_line_ending`, `normalize_line_endings`, `ensure_extension`, `validate_path`, `is_binary` |
-| Golden behavioral suite | **open** | Roadmap Phase 2 |
+| Golden behavioral suite | done | `tests/golden_cases.json` + harness; runs with `bun run test` (Roadmap Phase 2) |
 | Perf benchmarks / budgets | **open** | Roadmap Phase 7 |
 | `cargo clippy -- -D warnings` | done | enforced in CI on 3-OS matrix |
 
@@ -194,4 +195,4 @@ code wins, and STATUS reflects the code.
 3. **About dialog** unhandled (`menu-about` emitted, no listener).
 4. **External-change detection** + **large-file streaming** not implemented.
 5. **i18n / a11y keyboard + SR pass** not yet done.
-6. **Golden regression suite** + **perf budgets** not yet enforced.
+6. **Perf budgets** not yet enforced (golden regression suite is done — Phase 2).

@@ -160,35 +160,54 @@ green. (Branch protection pending manual admin enablement.)
 
 The example roadmap gates releases on a golden test suite. DevNote's equivalent is a
 behavioral regression suite that captures the invariants users actually notice.
+Completed in the `phase-2-golden` PR — **this phase surfaced and fixed three
+pre-existing bugs** (see the notes below).
 
-- [ ] **Tabs state machine** (`stores/tabs.svelte.ts`): already unit-tested, but
-  extend to cover: dirty-on-edit, `markSaved` clears dirty, close-dirty-tab rejected
-  (returns false) + `forceCloseTab` path, reorder bounds, "close last → new empty
-  tab", open-already-open path focuses existing tab, untitled counter uniqueness.
-- [ ] **Recovery round-trip**: autosave hash-coalescing produces a recovery file only
-  on real change; restore reconstructs identical content + path; Discard clears files;
-  Cancel preserves them. Driven through `commands/recovery.rs` + a temp `APP_DATA`
-  dir.
-- [ ] **File I/O invariants** (`commands/file.rs`): encoding detection matrix
-  (UTF-8 / UTF-16 LE+BOM / UTF-16 BE+BOM / Windows-1252), line-ending round-trip
-  (LF→LF, CRLF→CRLF, CR→CR), binary (NUL) rejection, path canonicalization rejects
-  symlink escapes, hard-cap rejection > 200 MB, soft-cap warning path at > 10 MB,
-  atomic save leaves no `.tmp` behind on success and no truncated file on simulated
-  rename failure.
-- [ ] **Find/Replace** logic: extraction of the match-navigation + replace-all pure
-  functions (currently embedded in the Svelte component) into a tested module so the
-  search semantics can be asserted without a DOM.
-- [ ] **Settings migration**: localStorage → `tauri-plugin-store` migration yields
-  identical resolved settings; unknown/missing keys fall back to defaults without
-  throwing.
-- [ ] **Golden cases JSON** (`tests/golden_cases.json`) gating editor behavior:
-  e.g. "opening a 10 MB CRLF Windows-1252 .csv opens with correct encoding + endings
-  and shows no dirty dot", "editing then undo returns to savedContent → dirty clears".
-  CI fails if a case regresses. Model: the example's `golden_cases.rs` running as
-  part of `cargo test --workspace` / `bun run test`, no separate invocation.
+- [x] **Tabs state machine** (`stores/tabs.svelte.ts`): extended coverage for
+  dirty-on-edit, `markSaved` clears dirty **and** updates fileName/language,
+  close-dirty-tab rejected (returns false) + `forceCloseTab` path, reorder
+  bounds, "close last → new empty tab" (untitled counter stays unique across
+  closes), open-already-open path focuses existing tab, active-tab switch when
+  closing middle/last/inactive tabs.
+- [x] **Recovery round-trip**: `commands/recovery.rs` refactored into testable
+  helpers (`write_recovery_file` / `read_recovery_file` / `clear_recovery_file`)
+  driven by temp-dir tests: save → restore yields identical content + path,
+  Discard (clear) removes the file, Cancel (no clear) preserves it, empty list
+  and malformed JSON resolve to `None` (never block startup).
+  - **Bug found & fixed**: autosave hash-coalescing never coalesced — the hash
+    included `saved_at`, so every 15 s tick rewrote the file. Now hashed on
+    path+content only (`utils/recovery.ts`).
+- [x] **File I/O invariants** (`commands/file.rs`): encoding detection matrix
+  (UTF-8 / UTF-8+BOM / UTF-16LE+BOM / UTF-16BE+BOM / Windows-1252), line-ending
+  round-trip (LF/CRLF/CR + cross-normalization), binary (NUL) rejection,
+  symlink canonicalization (unix), hard-cap rejection > 200 MB (sparse file),
+  soft-cap opens > 10 MB, atomic save leaves no `.tmp` behind, failed save
+  (readonly target, Windows) leaves the original untruncated.
+  - **Bugs found & fixed**: (1) UTF-16 files could never open — the NUL-byte
+    binary check rejected them before encoding detection; (2) saving as
+    "UTF-16LE/BE" silently wrote UTF-8 (encoding_rs has no UTF-16 encoder, it
+    always outputs UTF-8); saves now emit real UTF-16 + BOM via `encode_utf16`;
+    (3) saving with `line_ending: "LF"` never normalized CRLF content.
+- [x] **Find/Replace** logic: match-navigation + replace-all pure functions
+  extracted into `lib/editor/search.ts` (findAll / countMatches / findNextFrom /
+  replaceAll) and asserted without a DOM.
+  - **Bug found & fixed**: `replace` and `replace-all` actions were **no-ops**
+    in `Editor.svelte` — now wired to real document transactions.
+- [x] **Settings migration**: `sanitizeSettings()` picks only known, type-checked
+  keys from persisted data; unknown keys and out-of-range values fall back to
+  defaults without throwing.
+  - **Bug found & fixed**: the legacy `sabot-settings` key was checked before
+    `devnote-settings`, so a stale legacy key could override newer settings.
+    Priority is now newest-first.
+- [x] **Golden cases JSON** (`tests/golden_cases.json`) gating editor behavior:
+  open-1252-CRLF-csv → correct encoding/endings/no dirty dot, edit → undo →
+  dirty clears, dirty-tab close rejected, save-as clears dirty + updates path,
+  open-same-path focuses existing. Runs as part of `bun run test` — no separate
+  invocation. CI fails if a case regresses.
 
 **Acceptance:** Every user-visible invariant above has an automated test; a
-regression in any of them fails CI.
+regression in any of them fails CI. ✅ (All new tests green: 92 frontend +
+23 Rust.)
 
 ---
 

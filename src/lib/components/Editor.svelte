@@ -6,6 +6,7 @@
   import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
   import { createEditorState, reconfigureView, reconfigureLanguage } from '$lib/codemirror/setup';
   import { onEditorAction, type EditorAction } from '$lib/editor/actions';
+  import { findNextFrom, replaceAll } from '$lib/editor/search';
   import { settingsStore } from '$lib/stores/settings.svelte';
 
   interface Props {
@@ -130,9 +131,42 @@
         }
         break;
       }
-      // search/search-prev/search-next/replace/replace-all are no-ops here;
-      // CodeMirror's built-in search panel handles them once openSearchPanel
-      // is active. FindReplace still dispatches them for future use.
+      case 'replace': {
+        const { query, replacement, caseSensitive, useRegex } = action;
+        const doc = view.state.doc.toString();
+        const pos = view.state.selection.main.head;
+        const opts = { caseSensitive, useRegex };
+        const m =
+          findNextFrom(doc, query, pos, opts) ?? findNextFrom(doc, query, 0, opts);
+        if (m) {
+          view.dispatch({
+            changes: { from: m.from, to: m.to, insert: replacement },
+            selection: { anchor: m.from + replacement.length },
+          });
+          view.focus();
+        }
+        break;
+      }
+      case 'replace-all': {
+        const { query, replacement, caseSensitive, useRegex } = action;
+        const res = replaceAll(view.state.doc.toString(), query, replacement, {
+          caseSensitive,
+          useRegex,
+        });
+        if (res.count > 0) {
+          suppressNextUpdate = true;
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: res.content },
+          });
+          requestAnimationFrame(() => {
+            suppressNextUpdate = false;
+          });
+        }
+        break;
+      }
+      // search/search-prev/search-next are handled by CodeMirror's built-in
+      // search panel once openSearchPanel is active; FindReplace dispatches
+      // them to keep the query in sync with the panel.
     }
   }
 

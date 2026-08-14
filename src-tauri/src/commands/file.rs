@@ -53,6 +53,13 @@ fn detect_encoding(bytes: &[u8]) -> &'static Encoding {
   if bytes.starts_with(b"\xEF\xBB\xBF") {
     return encoding_rs::UTF_8;
   }
+  // UTF-16 BOMs take precedence over the chardet fallback
+  if bytes.starts_with(b"\xFF\xFE") {
+    return encoding_rs::UTF_16LE;
+  }
+  if bytes.starts_with(b"\xFE\xFF") {
+    return encoding_rs::UTF_16BE;
+  }
   if std::str::from_utf8(bytes).is_ok() {
     return encoding_rs::UTF_8;
   }
@@ -110,20 +117,42 @@ fn ensure_extension(path_str: &str, default_ext: &str) -> String {
   path_str.to_string()
 }
 
+/// UTF-16 has no encoder in `encoding_rs` (encoders always output UTF-8), so
+/// UTF-16 byte sequences must be produced manually from the string's code units.
+fn utf16_bytes(s: &str, big_endian: bool) -> Vec<u8> {
+  let mut out = Vec::with_capacity(s.len() * 2);
+  for unit in s.encode_utf16() {
+    if big_endian {
+      out.extend_from_slice(&unit.to_be_bytes());
+    } else {
+      out.extend_from_slice(&unit.to_le_bytes());
+    }
+  }
+  out
+}
+
 fn encode_content(content: &str, line_ending: &str, encoding: &str) -> Vec<u8> {
+  // "LF" must normalize too — otherwise a CRLF-loaded buffer stays CRLF
+  // even when the user explicitly saves with LF endings.
   let normalized: String = match line_ending {
     "CRLF" => normalize_line_endings(content, "\r\n"),
     "CR" => normalize_line_endings(content, "\r"),
-    _ => content.to_string(),
+    _ => normalize_line_endings(content, "\n"),
   };
-  let enc: &'static Encoding = match encoding {
-    "windows-1252" | "Windows-1252" => encoding_rs::WINDOWS_1252,
-    "UTF-16LE" => encoding_rs::UTF_16LE,
-    "UTF-16BE" => encoding_rs::UTF_16BE,
-    _ => encoding_rs::UTF_8,
-  };
-  let (encoded, _enc, _had_error) = enc.encode(&normalized);
-  encoded.to_vec()
+  match encoding {
+    "UTF-16LE" => {
+      let mut out = vec![0xFF, 0xFE];
+      out.extend_from_slice(&utf16_bytes(&normalized, false));
+      out
+    },
+    "UTF-16BE" => {
+      let mut out = vec![0xFE, 0xFF];
+      out.extend_from_slice(&utf16_bytes(&normalized, true));
+      out
+    },
+    "windows-1252" | "Windows-1252" => encoding_rs::WINDOWS_1252.encode(&normalized).0.to_vec(),
+    _ => normalized.as_bytes().to_vec(),
+  }
 }
 
 fn normalize_line_endings(s: &str, target: &str) -> String {
@@ -210,7 +239,9 @@ async fn read_file_internal(path: &str) -> Result<FilePayload, String> {
     .await
     .map_err(|e| format!("Failed to read file: {}", e))?;
 
-  if is_binary(&bytes) {
+  // UTF-16 text is full of NUL bytes — that is structural, not binary.
+  let has_utf16_bom = bytes.starts_with(b"\xFF\xFE") || bytes.starts_with(b"\xFE\xFF");
+  if is_binary(&bytes) && !has_utf16_bom {
     return Err("Refusing to open: file appears to be binary".to_string());
   }
 
@@ -462,6 +493,7 @@ pub async fn frontend_ready(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use tempfile::TempDir;
 
   #[test]
   fn detect_line_ending_prefers_crlf() {
@@ -512,5 +544,242 @@ mod tests {
     assert!(is_binary(b"hello\x00world"));
     assert!(!is_binary(b"hello world\n"));
     assert!(!is_binary(b""));
+  }
+
+  #[test]
+  fn detect_encoding_prefers_utf16_boms_over_chardet() {
+    assert_eq!(
+      detect_encoding(b"\xFF\xFEh\x00i\x00"),
+      encoding_rs::UTF_16LE
+    );
+    assert_eq!(
+      detect_encoding(b"\xFE\xFF\x00h\x00i"),
+      encoding_rs::UTF_16BE
+    );
+    assert_eq!(detect_encoding(b"\xEF\xBB\xBFhi"), encoding_rs::UTF_8);
+    assert_eq!(detect_encoding(b""), encoding_rs::UTF_8);
+  }
+
+  #[test]
+  fn encode_content_emits_utf16_boms() {
+    assert_eq!(
+      encode_content("hi", "LF", "UTF-16LE"),
+      b"\xFF\xFEh\x00i\x00"
+    );
+    assert_eq!(
+      encode_content("hi", "LF", "UTF-16BE"),
+      b"\xFE\xFF\x00h\x00i"
+    );
+    assert_eq!(encode_content("hi", "LF", "UTF-8"), b"hi");
+    assert_eq!(encode_content("hi", "LF", "windows-1252"), b"hi");
+  }
+
+  fn win1252_sample() -> String {
+    "L'été à Montréal était très chaleureux.\nLes éléphants et les éléphantes.\n".to_string()
+  }
+
+  async fn write_file(dir: &TempDir, name: &str, bytes: &[u8]) -> std::path::PathBuf {
+    let path = dir.path().join(name);
+    tokio::fs::write(&path, bytes).await.unwrap();
+    path
+  }
+
+  #[tokio::test]
+  async fn read_encoding_matrix_utf8_utf16_and_windows1252() {
+    let dir = TempDir::new().unwrap();
+    let sample = win1252_sample();
+
+    // UTF-8 (no BOM)
+    let p = write_file(&dir, "a.txt", sample.as_bytes()).await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert_eq!(payload.encoding, "UTF-8");
+    assert_eq!(payload.content, sample);
+
+    // UTF-8 with BOM — BOM stripped, encoding reported as UTF-8
+    let mut bom = b"\xEF\xBB\xBF".to_vec();
+    bom.extend_from_slice(sample.as_bytes());
+    let p = write_file(&dir, "b.txt", &bom).await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert_eq!(payload.encoding, "UTF-8");
+    assert_eq!(payload.content, sample);
+
+    // UTF-16LE with BOM (NUL bytes must NOT be treated as binary)
+    let mut le_bom = b"\xFF\xFE".to_vec();
+    le_bom.extend_from_slice(&utf16_bytes(&sample, false));
+    let p = write_file(&dir, "c.txt", &le_bom).await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert_eq!(payload.encoding, "UTF-16LE");
+    assert_eq!(payload.content, sample);
+
+    // UTF-16BE with BOM
+    let mut be_bom = b"\xFE\xFF".to_vec();
+    be_bom.extend_from_slice(&utf16_bytes(&sample, true));
+    let p = write_file(&dir, "d.txt", &be_bom).await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert_eq!(payload.encoding, "UTF-16BE");
+    assert_eq!(payload.content, sample);
+
+    // Windows-1252 (invalid UTF-8, chardet fallback)
+    let (w, _, _) = encoding_rs::WINDOWS_1252.encode(&sample);
+    let p = write_file(&dir, "e.txt", &w).await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert_eq!(payload.encoding, "windows-1252");
+    assert_eq!(payload.content, sample);
+  }
+
+  #[tokio::test]
+  async fn save_read_round_trip_preserves_encoding_and_line_endings() {
+    let dir = TempDir::new().unwrap();
+    let sample = win1252_sample();
+    for (encoding, expected_name) in [
+      ("UTF-8", "UTF-8"),
+      ("UTF-16LE", "UTF-16LE"),
+      ("UTF-16BE", "UTF-16BE"),
+      ("windows-1252", "windows-1252"),
+    ] {
+      let path = dir.path().join(format!("rt-{}.txt", encoding));
+      save_file(
+        path.to_string_lossy().to_string(),
+        sample.clone(),
+        Some("LF".to_string()),
+        Some(encoding.to_string()),
+      )
+      .await
+      .unwrap();
+      let payload = read_file_internal(&path.to_string_lossy()).await.unwrap();
+      assert_eq!(payload.encoding, expected_name, "encoding {}", encoding);
+      assert_eq!(payload.content, sample, "content for {}", encoding);
+      assert_eq!(payload.line_ending, "LF");
+    }
+  }
+
+  #[tokio::test]
+  async fn line_ending_detection_and_round_trip() {
+    let dir = TempDir::new().unwrap();
+
+    let p = write_file(&dir, "lf.txt", b"a\nb\nc\n").await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert_eq!(payload.line_ending, "LF");
+
+    let p = write_file(&dir, "crlf.txt", b"a\r\nb\r\nc\r\n").await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert_eq!(payload.line_ending, "CRLF");
+
+    let p = write_file(&dir, "cr.txt", b"a\rb\rc\r").await;
+    let payload = read_file_internal(&p.to_string_lossy()).await.unwrap();
+    assert_eq!(payload.line_ending, "CR");
+
+    // Re-saving with a different target normalizes the bytes
+    let path = dir.path().join("crlf2.txt");
+    save_file(
+      path.to_string_lossy().to_string(),
+      "a\r\nb\r\nc\r\n".to_string(),
+      Some("LF".to_string()),
+      Some("UTF-8".to_string()),
+    )
+    .await
+    .unwrap();
+    let bytes = tokio::fs::read(&path).await.unwrap();
+    assert_eq!(bytes, b"a\nb\nc\n");
+  }
+
+  #[tokio::test]
+  async fn binary_nul_file_is_rejected_without_utf16_bom() {
+    let dir = TempDir::new().unwrap();
+    let p = write_file(&dir, "bin.dat", b"\x00\x01\x02\x03").await;
+    let err = read_file_internal(&p.to_string_lossy()).await.unwrap_err();
+    assert!(err.contains("binary"), "unexpected error: {}", err);
+  }
+
+  #[tokio::test]
+  async fn hard_cap_rejects_files_over_200mb() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("huge.txt");
+    let f = std::fs::File::create(&path).unwrap();
+    f.set_len(HARD_LIMIT_BYTES + 1).unwrap();
+    drop(f);
+    let err = read_file_internal(&path.to_string_lossy())
+      .await
+      .unwrap_err();
+    assert!(err.contains("File too large"), "unexpected error: {}", err);
+  }
+
+  #[tokio::test]
+  async fn soft_cap_allows_files_over_10mb() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("big.csv");
+    let content = "a,b\r\n".repeat((SOFT_LIMIT_BYTES / 4) as usize + 1);
+    tokio::fs::write(&path, content.as_bytes()).await.unwrap();
+    assert!(content.len() as u64 > SOFT_LIMIT_BYTES);
+    let payload = read_file_internal(&path.to_string_lossy()).await.unwrap();
+    assert_eq!(payload.content.len(), content.len());
+    assert_eq!(payload.line_ending, "CRLF");
+    assert_eq!(payload.encoding, "UTF-8");
+  }
+
+  #[tokio::test]
+  async fn atomic_save_leaves_no_temp_files_behind() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("t.txt");
+    save_file(
+      path.to_string_lossy().to_string(),
+      "hello".to_string(),
+      Some("LF".to_string()),
+      Some("UTF-8".to_string()),
+    )
+    .await
+    .unwrap();
+    let names: Vec<String> = std::fs::read_dir(dir.path())
+      .unwrap()
+      .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+      .collect();
+    assert_eq!(names, vec!["t.txt"]);
+    assert_eq!(tokio::fs::read_to_string(&path).await.unwrap(), "hello");
+  }
+
+  #[cfg(windows)]
+  #[tokio::test]
+  async fn failed_save_leaves_target_untouched() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("locked.txt");
+    std::fs::write(&path, b"original").unwrap();
+    // Locking the file makes the atomic rename fail on Windows
+    let mut perms = std::fs::metadata(&path).unwrap().permissions();
+    perms.set_readonly(true);
+    std::fs::set_permissions(&path, perms).unwrap();
+
+    let err = save_file(
+      path.to_string_lossy().to_string(),
+      "overwritten".to_string(),
+      Some("LF".to_string()),
+      Some("UTF-8".to_string()),
+    )
+    .await
+    .unwrap_err();
+    assert!(
+      err.contains("Permission denied"),
+      "unexpected error: {}",
+      err
+    );
+
+    let mut perms = std::fs::metadata(&path).unwrap().permissions();
+    perms.set_readonly(false);
+    std::fs::set_permissions(&path, perms).unwrap();
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "original");
+  }
+
+  #[cfg(unix)]
+  #[tokio::test]
+  async fn validate_path_canonicalizes_symlinks() {
+    use std::os::unix::fs::symlink;
+
+    let dir = TempDir::new().unwrap();
+    let real = dir.path().join("real.txt");
+    std::fs::write(&real, b"x").unwrap();
+    let link = dir.path().join("link.txt");
+    symlink(&real, &link).unwrap();
+
+    let canonical = validate_path(&link.to_string_lossy()).unwrap();
+    assert_eq!(canonical, real.canonicalize().unwrap());
   }
 }

@@ -10,6 +10,23 @@
 - **License policy documented**: `src-tauri/deny.toml` allows permissive
   licenses only, with one explicit exception — `chardet` (LGPL-3.0, charset
   detection). `src-tauri/Cargo.toml` now declares `license = "MIT"`.
+- **Dependency bump**: `plist` 1.9.0 → 1.10.0 (pulls patched `quick-xml`
+  0.41.0, fixing RUSTSEC-2026-0194/0195 on the runtime XML path).
+
+### Golden Regression Suite (Roadmap Phase 2)
+- **Golden cases**: `tests/golden_cases.json` + harness run with
+  `bun run test` — opens, dirty flags, save/undo round-trips, tab focus.
+- **Bugs fixed by the new tests**:
+  - UTF-16 files could never be opened (NUL-byte binary check) and saving as
+    UTF-16 silently wrote UTF-8; saves now write real UTF-16 + BOM.
+  - Saving with `line_ending: "LF"` did not normalize CRLF content.
+  - Autosave hash-coalescing never skipped unchanged writes (hash included
+    `saved_at`); now hashes path+content only.
+  - `Replace` / `Replace All` in the Find panel were no-ops; now implemented
+    via a tested pure search module (`lib/editor/search.ts`).
+  - Settings now sanitize persisted values (unknown keys / out-of-range
+    values fall back to defaults) and migrate `sabot-settings` before
+    `devnote-settings` (newest key wins).
 
 ## v0.2.0 — Production Grade Upgrade
 

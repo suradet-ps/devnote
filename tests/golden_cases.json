@@ -1,0 +1,118 @@
+{
+  "cases": [
+    {
+      "id": "open-windows1252-crlf-csv-clean",
+      "description": "opening a CRLF Windows-1252 .csv opens with correct encoding + endings and shows no dirty dot",
+      "payload": {
+        "path": "/data/report.csv",
+        "file_name": "report.csv",
+        "content": "caf\u00e9,na\u00efve\r\npr\u00e9sent,\u00e9l\u00e8ve\r\n",
+        "encoding": "windows-1252",
+        "line_ending": "CRLF"
+      },
+      "expect": {
+        "language": "text",
+        "encoding": "windows-1252",
+        "lineEnding": "CRLF",
+        "dirty": false,
+        "tabCount": 1
+      }
+    },
+    {
+      "id": "open-rust-file-detects-language",
+      "description": "opening a .rs file detects the language and stays clean",
+      "payload": {
+        "path": "/src/main.rs",
+        "file_name": "main.rs",
+        "content": "fn main() {\n    println!(\"hi\");\n}\n",
+        "encoding": "UTF-8",
+        "line_ending": "LF"
+      },
+      "expect": {
+        "language": "rust",
+        "encoding": "UTF-8",
+        "lineEnding": "LF",
+        "dirty": false,
+        "tabCount": 1
+      }
+    },
+    {
+      "id": "edit-then-undo-clears-dirty",
+      "description": "editing then undoing (restoring savedContent) clears the dirty flag",
+      "payload": {
+        "path": "/notes.md",
+        "file_name": "notes.md",
+        "content": "hello world\n",
+        "encoding": "UTF-8",
+        "line_ending": "LF"
+      },
+      "expect": {
+        "language": "markdown",
+        "dirty": false
+      },
+      "scenario": [
+        { "op": "edit", "content": "hello world\nedited line\n" },
+        { "op": "expect", "dirty": true },
+        { "op": "edit", "content": "@restore" },
+        { "op": "expect", "dirty": false }
+      ]
+    },
+    {
+      "id": "dirty-tab-close-rejected",
+      "description": "a dirty tab cannot be closed by closeTab; forceCloseTab bypasses the guard",
+      "payload": {
+        "path": "/draft.txt",
+        "file_name": "draft.txt",
+        "content": "original\n",
+        "encoding": "UTF-8",
+        "line_ending": "LF"
+      },
+      "expect": {
+        "dirty": false
+      },
+      "scenario": [
+        { "op": "edit", "content": "changed" },
+        { "op": "expect", "dirty": true },
+        { "op": "expect", "closeRejected": true }
+      ]
+    },
+    {
+      "id": "save-clears-dirty-and-updates-path",
+      "description": "markSaved after a save clears the dirty flag and adopts the new path",
+      "payload": {
+        "path": "/tmp/old.txt",
+        "file_name": "old.txt",
+        "content": "v1\n",
+        "encoding": "UTF-8",
+        "line_ending": "LF"
+      },
+      "expect": {
+        "dirty": false
+      },
+      "scenario": [
+        { "op": "edit", "content": "v2\n" },
+        { "op": "expect", "dirty": true },
+        { "op": "saveAs", "path": "/tmp/new.txt" },
+        { "op": "expect", "dirty": false, "path": "/tmp/new.txt", "fileName": "new.txt" }
+      ]
+    },
+    {
+      "id": "open-same-path-twice-focuses-existing",
+      "description": "opening an already-open path focuses the existing tab instead of duplicating",
+      "payload": {
+        "path": "/shared/a.txt",
+        "file_name": "a.txt",
+        "content": "shared\n",
+        "encoding": "UTF-8",
+        "line_ending": "LF"
+      },
+      "expect": {
+        "tabCount": 1
+      },
+      "scenario": [
+        { "op": "open", "payload": { "path": "/shared/a.txt", "file_name": "a.txt", "content": "shared\n", "encoding": "UTF-8", "line_ending": "LF" } },
+        { "op": "expect", "tabCount": 1 }
+      ]
+    }
+  ]
+}
