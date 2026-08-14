@@ -181,6 +181,23 @@ export const tabsStore = {
     }));
   },
 
+  /**
+   * Replace a tab's content with a fresh read from disk (external-change
+   * reload). Keeps cursor, scroll and read-only state.
+   */
+  reloadTab(id: string, payload: FilePayload): void {
+    mutateTab(id, (t) => ({
+      ...t,
+      content: payload.content,
+      savedContent: payload.content,
+      path: payload.path,
+      fileName: payload.file_name,
+      language: detectLanguage(payload.path),
+      encoding: payload.encoding,
+      lineEnding: payload.line_ending,
+    }));
+  },
+
   renameTab(id: string, newName: string): void {
     mutateTab(id, (t) => ({ ...t, fileName: newName }));
   },

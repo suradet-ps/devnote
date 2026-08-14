@@ -49,4 +49,7 @@ export const ipc = {
     invoke<void>('set_window_title', { title }),
 
   printCurrent: () => invoke<void>('print_current'),
+
+  watchFile: (path: string) => invoke<void>('watch_file', { path }),
+  unwatchFile: (path: string) => invoke<void>('unwatch_file', { path }),
 } as const;

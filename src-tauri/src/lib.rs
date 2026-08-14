@@ -385,6 +385,8 @@ pub fn run() {
       commands::file::frontend_ready,
       commands::window::set_window_title,
       commands::window::print_current,
+      commands::watcher::watch_file,
+      commands::watcher::unwatch_file,
       commands::recovery::save_recovery_data,
       commands::recovery::check_recovery_data,
       commands::recovery::clear_recovery_data,
@@ -406,6 +408,11 @@ pub fn run() {
       app.manage(RecoveryState::new(recovery_dir));
 
       app.manage(RecentFilesState::new(dir));
+
+      // External-change watcher (Phase 5) — watches files open in tabs
+      app.manage(crate::state::watcher::FileWatcherState::new(
+        app.handle().clone(),
+      ));
 
       // Capture file paths passed as command-line args (macOS "Open With" / drag-to-icon)
       {

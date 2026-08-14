@@ -83,6 +83,11 @@ const en = {
   'recovery.title': 'Session Recovery',
   'recovery.body': 'Found unsaved files from previous session: {names}. Restore them?',
   'recovery.restore': 'Restore',
+  'dialog.fileChangedTitle': 'File Changed on Disk',
+  'dialog.fileChangedBody': '"{name}" was changed on disk. Reload the file?{dirty}',
+  'dialog.fileChangedDirty': ' Unsaved changes will be lost.',
+  'dialog.fileChangedReload': 'Reload',
+  'dialog.fileChangedIgnore': 'Ignore',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -163,6 +168,11 @@ const th: Record<MessageKey, string> = {
   'recovery.title': 'กู้คืนเซสชัน',
   'recovery.body': 'พบไฟล์ที่ยังไม่ได้บันทึกจากเซสชันก่อนหน้า: {names} ต้องการกู้คืนหรือไม่?',
   'recovery.restore': 'กู้คืน',
+  'dialog.fileChangedTitle': 'ไฟล์ถูกแก้ไขบนดิสก์',
+  'dialog.fileChangedBody': '"{name}" ถูกแก้ไขบนดิสก์ ต้องการโหลดไฟล์ใหม่หรือไม่?{dirty}',
+  'dialog.fileChangedDirty': ' การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะสูญหาย',
+  'dialog.fileChangedReload': 'โหลดใหม่',
+  'dialog.fileChangedIgnore': 'ไม่ต้องสนใจ',
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = {

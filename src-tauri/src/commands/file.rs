@@ -292,7 +292,11 @@ pub async fn save_file(
   }
 
   let data = encode_content(&content, &le, &enc);
-  write_atomic(&p, data).await
+  write_atomic(&p, data).await?;
+  // The atomic rename produces a fs event that would look external — suppress
+  // it so the watcher does not prompt about our own save.
+  crate::state::watcher::note_self_save(&p);
+  Ok(())
 }
 
 #[tauri::command]
@@ -346,6 +350,7 @@ pub async fn save_file_as(
       let data = encode_content(&content, &le, &enc);
       let p = PathBuf::from(&path_str);
       write_atomic(&p, data).await?;
+      crate::state::watcher::note_self_save(&p);
       Ok(Some(path_str))
     },
     None => Ok(None),
