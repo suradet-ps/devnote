@@ -1,180 +1,147 @@
-<p align="center">
-  <img src="src-tauri/icons/icon.png" width="128" alt="devnote icon">
-</p>
+# DevNote
 
-<h1 align="center">DevNote</h1>
-
-<p align="center">
-  A minimal, opinionated desktop text editor built with Tauri 2 and CodeMirror 6.
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Tauri-2.11-%23FFC131?logo=tauri" alt="Tauri">
-  <img src="https://img.shields.io/badge/Svelte-5-%23FF3E00?logo=svelte" alt="Svelte">
-  <img src="https://img.shields.io/badge/CodeMirror-6-%23d23b37?logo=codemirror" alt="CodeMirror">
-  <img src="https://img.shields.io/badge/Rust-2024-%23CE422B?logo=rust" alt="Rust">
-  <img src="https://img.shields.io/badge/TypeScript-5-%233178C6?logo=typescript" alt="TypeScript">
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/macOS-first-000000?logo=apple" alt="macOS">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
-  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs Welcome">
-</p>
+```
+██████╗ ███████╗██╗   ██╗███╗   ██╗ ██████╗ ████████╗███████╗
+██╔══██╗██╔════╝██║   ██║████╗  ██║██╔═══██╗╚══██╔══╝██╔════╝
+██║  ██║█████╗  ██║   ██║██╔██╗ ██║██║   ██║   ██║   █████╗
+██║  ██║██╔══╝  ╚██╗ ██╔╝██║╚██╗██║██║   ██║   ██║   ██╔══╝
+██████╔╝███████╗ ╚████╔╝ ██║ ╚████║╚██████╔╝   ██║   ███████╗
+╚═════╝ ╚══════╝  ╚═══╝  ╚═╝  ╚═══╝ ╚═════╝    ╚═╝╚══════╝
+```
 
 ---
 
-## Features
+## ◆ PULSE
 
-- **Native feel** — macOS traffic light buttons, native window decorations
-- **Multi-tab editing** — create, close, rename, reorder tabs with dirty indicators
-- **Syntax highlighting** — 10+ language packs via CodeMirror 6 (Rust, TypeScript, Python, Go, and more)
-- **Find & Replace** — regex, case-sensitive, whole-word match support
-- **Recent files** — persisted across sessions, accessible from context menu
-- **Word wrap toggle** — quick switch with `Alt+Z`
-- **Customizable** — font size, tab size, insert spaces preference
-- **Warm design** — cream canvas + coral accent inspired by Anthropic's design system
-- **Cross-platform** — built on Tauri 2 for macOS, Windows, and Linux
+An editor should get out of the way of the note. DevNote is a minimal,
+opinionated desktop text editor - Tauri 2 shell, CodeMirror 6 engine,
+cream canvas and coral accent - built for the person who wants multi-tab
+editing, honest file handling, and a warm page, without a project tree
+or a terminal in the way. It edits. It saves safely. It remembers where
+you were.
 
-## Tech Stack
+| P0-P2 ▣ | P3 ▣ | P4 ▣ | P5 ▣ | P6-P10 ☐ |
+|---|---|---|---|---|
 
-| Layer | Technology |
-|---|---|
-| Desktop runtime | [Tauri 2](https://tauri.app) |
-| Frontend | [Svelte 5](https://svelte.dev) + TypeScript |
-| Editor engine | [CodeMirror 6](https://codemirror.net) |
-| Styling | CSS custom properties (design tokens) |
-| Package manager | [bun](https://bun.sh) |
-| Language | Rust (backend) + TypeScript (frontend) |
+*Foundation, CI, the golden regression suite, accessibility, power-user
+features, and file I/O hardening are sealed. Settings depth, performance
+budgets, security hardening, and the first stable release stand open.*
 
-## Getting Started
+> Built with Tauri 2 + Svelte 5 + CodeMirror 6, Rust 2024 on one side and
+> TypeScript on the other - macOS-first, warm by design.
+>
+> **suradet-ps**, artifact keeper
 
-### Prerequisites
+---
+
+## ◆ IGNITION
+
+Two runtimes, one command.
+
+```
+⟫ bun install
+⟫ bun run tauri dev
+```
+
+The release artifact:
+
+```
+⟫ bun run tauri build
+```
+
+Signing notes for macOS: ad-hoc identity by default (`entitlements-dev.plist`,
+no sandbox - required for Finder "Open With" under ad-hoc signing); pass
+`--production` to `scripts/post-build-macos.sh` for the sandboxed
+entitlements used under a paid Developer ID.
+
+<details>
+<summary>Prerequisites</summary>
 
 - [Rust](https://rustup.rs/) (latest stable)
-- [bun](https://bun.sh/) (`curl -fsSL https://bun.sh/install | bash`)
+- [bun](https://bun.sh/) - `curl -fsSL https://bun.sh/install | bash`
 - [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 
-### Install & Run
+</details>
 
-```bash
-# Clone the repository
-git clone https://github.com/suradet-ps/devnote.git
-cd devnote
+---
 
-# Install dependencies
-bun install
+## ◆ ANATOMY
 
-# Start dev server
-bun run tauri dev
+Two sides of one window, one opinion: files are handled honestly.
+
+- **Edits** - CodeMirror 6 powers the page: 10+ language packs loaded on
+  demand, regex find & replace, multi-cursor, go-to-symbol, and
+  bracket-aware guides - an editor's editor, no project tree in sight.
+- **Guards** - file I/O is the fortress: encoding detection with
+  confidence scores (UTF-8, UTF-16 BOM variants, windows-1252), line-ending
+  round-trips, atomic chunked writes that leave no `.tmp` behind, a 200 MB
+  hard cap with a read-only preview mode for the 50-200 MB band, and
+  external-change detection via `notify` - debounced, self-save-suppressed,
+  never auto-reloading without consent.
+- **Remembers** - tabs with dirty indicators, recovery writes every 15 s
+  (hashed on path + content, never on time), recent files, and settings
+  that sanitize unknown keys instead of crashing on them.
+- **Watches** - the window close is intercepted: dirty tabs trigger the
+  Save All / Don't Save / Cancel flow on every platform - a failed save
+  aborts the close, always.
+- **Warms** - the design system in `docs/DESIGN.md`: cream canvas, coral
+  accent, tokens in CSS custom properties - dark mode is a theme toggle,
+  not a markup fork.
+
+---
+
+## ◆ RITUALS
+
+**The core ceremony** - the daily note:
+
+1. `Ctrl+N` for a fresh tab, `Ctrl+O` for a file. Open-already-open
+   focuses the existing tab instead of duplicating it.
+2. Type. `Ctrl+D` grows the cursor to the next occurrence, `Ctrl+Alt+-`
+   jumps back to the last edit site, `Ctrl+P` prints the page to PDF.
+3. `Ctrl+S` saves atomically - rename, never truncate. The dirty dot
+   clears; the path updates.
+4. Close with `Ctrl+W`. Dirty tabs are asked, not assumed.
+
+**The ceremony of honesty** - a file changed on disk is reported, never
+silently reloaded. A large file opens as a read-only preview with a badge
+instead of a lie about editability. A low-confidence encoding asks which
+one it is before a single byte is committed.
+
+**The ceremony of safety** - every save is atomic, every close is
+guarded, every unsaved word is recoverable. The editor may be minimal;
+its promises are not.
+
+---
+
+## ◆ ECHOES
+
+**Where this artifact is heading**
+
+```
+P0-P2 ▸ foundation, CI, golden regression suite (92 frontend + 23 Rust) ▸ sealed
+P3-P5 ▸ a11y & i18n, power-user features, file I/O hardening ──────────── ▸ sealed
+P6    ▸ settings window, themes, per-tab overrides ────────────────────── ▸ open
+P7    ▸ performance budgets, CI-enforced ──────────────────────────────── ▸ open
+P8    ▸ unsafe audit, CSP regression, reproducible builds ─────────────── ▸ open
+P9-P10 ▸ macOS DMG release wiring, onboarding docs ─────────────────────── ▸ open
 ```
 
-### Build
+**Raising the artifact** - the ground truth lives in `docs/STATUS.md`;
+the path in `docs/ROADMAP.md`; the rules in `AGENTS.md` and
+`docs/AGENTS-RUST.md`. Gates before any PR: `bun run check`, vitest,
+`cargo clippy -- -D warnings`, `cargo test`, and the golden cases in
+`tests/golden_cases.json`.
 
-```bash
-# Production build (creates .app / .dmg / .exe)
-bun run tauri build
+**Status** - CI runs the full matrix (frontend + Rust, three OSes) plus a
+Tauri build smoke on every push. [Watch the gates](.github/workflows).
+
+---
+
+```
+  ─────────────────────────────────────────
+   A minimal editor is not a small promise.
+   It is a small surface with a deep floor.
+  ─────────────────────────────────────────
 ```
 
-## Project Structure
-
-```
-devnote/
-├── src-tauri/                # Rust backend
-│   ├── src/
-│   │   ├── commands/         # Tauri IPC commands (file I/O, window)
-│   │   ├── state/            # Persistent state (recent files)
-│   │   ├── lib.rs            # App builder, plugin registration
-│   │   └── main.rs           # Entry point
-│   ├── icons/                # App icons (all platforms)
-│   └── tauri.conf.json       # Tauri configuration
-├── src/                      # Svelte frontend
-│   ├── lib/
-│   │   ├── components/       # UI components (TabBar, Editor, StatusBar...)
-│   │   ├── codemirror/       # Editor setup, themes, language detection
-│   │   ├── stores/           # Svelte 5 state (tabs, recent, settings)
-│   │   └── utils/            # Helpers (language detection, path formatting)
-│   └── routes/               # Page routes
-├── README.md                  # This file
-├── AGENTS.md                  # Agent instructions (loaded from root)
-├── docs/                      # Documentation
-│   ├── DESIGN.md              # Design tokens & visual system
-│   ├── STATUS.md              # Verified current-state snapshot
-│   ├── CHANGELOG.md           # Release history
-│   ├── CONTRIBUTING.md
-│   ├── ROADMAP.md
-│   └── AGENTS-RUST.md         # Rust agent instructions
-└── scripts/                   # Build scripts (icon generation)
-```
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|---|---|
-| `Ctrl+N` | New tab |
-| `Ctrl+O` | Open file |
-| `Ctrl+S` | Save |
-| `Ctrl+Shift+S` | Save As |
-| `Ctrl+W` | Close tab |
-| `Ctrl+Tab` | Next tab |
-| `Ctrl+Shift+Tab` | Previous tab |
-| `Ctrl+F` | Find |
-| `Ctrl+H` | Find & Replace |
-| `Ctrl+G` | Go to line |
-| `Ctrl+Shift+P` | Go to Symbol (Rust / JS / TS / Python) |
-| `Ctrl+P` | Print to PDF (OS print dialog) |
-| `Ctrl+D` | Add next occurrence (multi-cursor) |
-| `Ctrl+Shift+L` | Select all occurrences |
-| `Ctrl+Alt+-` / `Ctrl+Alt+=` | Jump to previous / next edit site |
-| `Alt+Z` | Toggle word wrap |
-| `Ctrl++` / `Ctrl+-` | Zoom in / out |
-| `Ctrl+0` | Reset zoom |
-
-## Development
-
-```bash
-# Type check
-bun run check
-
-# Lint Rust code
-cd src-tauri && cargo clippy
-
-# Run tests
-cd src-tauri && cargo test
-
-# Regenerate app icons
-node scripts/gen-icons.cjs
-```
-
-## macOS build notes
-
-The release build is signed with an ad-hoc identity. The
-`post-build-macos.sh` script selects which entitlements to apply:
-
-- **Default (dev)**: `entitlements-dev.plist` — no sandbox. Required for
-  Finder "Open With" / file associations to work with ad-hoc signing,
-  because macOS does **not** pass file paths to a sandboxed app that is
-  only ad-hoc signed. Use this for local testing.
-- **`--production`** flag: `entitlements.plist` — sandboxed. Only useful
-  when shipping under a paid Developer ID; ad-hoc + sandboxed apps will
-  have file associations silently broken.
-
-```bash
-bun run tauri build
-./scripts/post-build-macos.sh                                 # dev (no sandbox)
-./scripts/post-build-macos.sh src-tauri/target/.../devnote.app --production  # sandboxed
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feat/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feat/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+Licensed under the [MIT License](LICENSE).
