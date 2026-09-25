@@ -1,15 +1,21 @@
 #![allow(unexpected_cfgs)]
 
 mod commands;
-#[cfg(target_os = "macos")]
-mod macos_events;
 mod state;
 
 use state::PendingFilesState;
 use state::recent::RecentFilesState;
 use state::recovery::RecoveryState;
+use std::sync::Mutex;
 use tauri::Manager;
 use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+
+/// File paths that arrived via `RunEvent::Opened` before `setup` ran.
+///
+/// On macOS a cold-start "Open With" delivers the open event before the
+/// `Ready` event, so `PendingFilesState` is not managed yet and the run
+/// callback would otherwise drop the path. Setup drains this buffer.
+static EARLY_PENDING: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 fn init_logging(app_data_dir: &std::path::Path) {
   let log_dir = app_data_dir.join("logs");
@@ -436,17 +442,14 @@ pub fn run() {
 
       app.manage(pending);
 
-      #[cfg(target_os = "macos")]
+      // Drain paths that arrived via `RunEvent::Opened` before setup ran
+      // (macOS cold-start file associations deliver the open event first).
+      if let Ok(mut early) = EARLY_PENDING.lock()
+        && !early.is_empty()
+        && let Ok(mut paths) = pending_arc.lock()
       {
-        macos_events::init(pending_arc.clone());
-        macos_events::macos::capture_launch_file(&pending_arc);
-        macos_events::macos::install_handler(pending_arc.clone());
-        if let Ok(paths) = pending_arc.lock() {
-          log::info!(
-            "[launch] pending files after Apple Event capture: {:?}",
-            *paths
-          );
-        }
+        log::info!("[launch] files buffered before setup: {:?}", *early);
+        paths.append(&mut early);
       }
 
       let menu = build_menu(app.handle());
@@ -501,6 +504,14 @@ pub fn run() {
           p.extend(paths.clone());
           log::info!(
             "[RunEvent::Opened] added to pending list (now {} total)",
+            p.len()
+          );
+        } else if let Ok(mut p) = EARLY_PENDING.lock() {
+          // Setup has not run yet (cold start): buffer the paths until it does.
+          p.extend(paths.clone());
+          log::info!(
+            "[RunEvent::Opened] setup pending; buffered {} path(s) early (now {} total)",
+            paths.len(),
             p.len()
           );
         }
