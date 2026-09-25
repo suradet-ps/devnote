@@ -6,9 +6,9 @@ sync with the code; when a feature lands or changes, update both this file and
 `AGENTS.md`. Do **not** trust `AGENTS.md` alone if it disagrees with STATUS - the
 code wins, and STATUS reflects the code.
 
-> Last reconciled: Phase 0 (see `ROADMAP.md`). The pre-v0.2.0 design described in
-> the original `AGENTS.md` (custom titlebar, `tauri-plugin-fs` on the renderer,
-> localStorage settings) was superseded and has been removed from the spec.
+> Last reconciled: post-roadmap audit (see `ROADMAP.md`). The pre-v0.2.0 design
+> described in the original `AGENTS.md` (custom titlebar, `tauri-plugin-fs` on the
+> renderer, localStorage settings) was superseded and has been removed from the spec.
 
 ---
 
@@ -57,7 +57,7 @@ code wins, and STATUS reflects the code.
 | Native menu bar | done | File / Edit / View / Window / Help built in `build_menu` |
 | Menu → event routing | done | emits Tauri events (`menu-open`, `menu-save`, …); no accelerators by design |
 | Open Recent submenu | done | `recent-<path>` events; re-built dynamically |
-| About dialog | **open** | `menu-about` emitted but not yet handled (Roadmap Phase 9) |
+| About dialog | partial | `menu-about` opens an in-app dialog (name/version); a full About window with licenses/offline disclaimer is still open (Roadmap Phase 9) |
 
 ---
 
@@ -67,8 +67,8 @@ code wins, and STATUS reflects the code.
 |---|---|---|
 | Persisted list (max 10) | done | `{app_data_dir}/recent_files.json` |
 | Add / Get / Remove | done | Rust commands + Svelte mirror store |
-| Native "Open Recent" | done | submenu in `lib.rs` |
-| Context-menu access | done | Copy Path / Reveal in File Explorer |
+| Native "Open Recent" | **open** | submenu is a disabled `(No Recent Files)` placeholder; never rebuilt from `RecentFilesState` |
+| UI entry point | **open** | the recent dialog is rendered but never opened; `recent-<path>` / `menu-open-recent` handlers exist but no menu items are created |
 
 ---
 
@@ -102,12 +102,12 @@ code wins, and STATUS reflects the code.
 
 | Capability | Status | Notes |
 |---|---|---|
-| 10+ language packs, on-demand | done | ~110 KB initial editor bundle |
+| 10+ language packs, on-demand | done | JavaScript is the only statically imported pack |
 | Light + dark themes | done | `devnoteLightTheme` + `oneDark` |
 | Go to Line (Ctrl+G) | done | clamps + centers viewport |
 | Word-wrap / font-size / language reconfigure | done | via `Compartment`, no rebuild |
 | Cursor update coalescing | done | `requestAnimationFrame` |
-| Shebang-based detection | done | `detect-lang.ts` |
+| Shebang-based detection | unwired | `detect-lang.ts` implements it and tests cover it, but no call site passes `content` |
 | Multi-cursor | done | `Ctrl+D` add next occurrence, `Ctrl+Shift+L` select all occurrences (Phase 4) |
 | Bracket/indent guides | done | CSS-only guides at tab stops; View → Indent Guides (Phase 4) |
 | Visible whitespace | done | spaces `·` / tabs `→` in viewport; View → Visible Whitespace (Phase 4) |
@@ -134,9 +134,11 @@ code wins, and STATUS reflects the code.
 
 | Capability | Status | Notes |
 |---|---|---|
-| Regex / case-sensitive / whole-word | done | CM `SearchQuery` |
-| Match count + nav (Enter/Shift+Enter) | done | `3 of 12` badge |
-| Replace / Replace All | done | |
+| Regex / case-sensitive | done | CM `SearchQuery` |
+| Whole-word | **open** | not implemented in `FindReplace.svelte` |
+| Match count | **open** | `countMatches` exists in `search.ts` but is test-only; no badge is rendered |
+| Nav (Enter/Shift+Enter) | done | |
+| Replace / Replace All | done | wired to real document transactions |
 | Pure-logic extraction for tests | done | `lib/editor/search.ts` (findAll / countMatches / findNextFrom / replaceAll); replace + replace-all wired into Editor |
 
 ---
@@ -158,7 +160,7 @@ code wins, and STATUS reflects the code.
 
 | Capability | Status | Notes |
 |---|---|---|
-| macOS "Open With" / drag-to-icon | done | `macos_events.rs` Apple Events |
+| macOS "Open With" / drag-to-icon | done | Tauri `RunEvent::Opened` + early buffer for pre-`setup` events (no custom Apple Event FFI) |
 | File drag-and-drop | done | opens dropped files |
 | 50+ file-association extensions | done | `tauri.conf.json` |
 | Reveal in File Explorer | done | via `tauri-plugin-shell` |
@@ -174,7 +176,7 @@ code wins, and STATUS reflects the code.
 | CSP tightened | done | no inline scripts, no external fonts |
 | Renderer `fs:*` removed | done | file I/O only via Rust commands |
 | Path canonicalization | done | symlink-escape guard |
-| `unsafe` audit | done | zero `unsafe` in app crate |
+| `unsafe` audit | done | zero `unsafe` in `src-tauri/src` (macOS Apple Event FFI removed in favour of `RunEvent::Opened`); CI guard still pending (Roadmap Phase 8) |
 | Release optimizations | done | `opt-level="z"`, `lto`, `strip`, `panic="abort"` |
 | CI workflow | done | frontend check/test/build; Rust fmt/clippy/test/doc on 3-OS matrix; Tauri deb-build smoke; deny/audit gate; conventional-commits title check. Branch protection pending admin (Roadmap Phase 1) |
 | Cross-platform release pipeline | done (partial) | tag-triggered Windows installer release exists; macOS/Linux + checksums + signing open (Roadmap Phase 9) |
@@ -188,7 +190,7 @@ code wins, and STATUS reflects the code.
 |---|---|---|
 | `bun run check` (svelte-check) | done | |
 | `bun run test` (vitest) | done | utils / stores / actions covered |
-| `cargo test --lib` | done | `detect_line_ending`, `normalize_line_endings`, `ensure_extension`, `validate_path`, `is_binary` |
+| `cargo test --lib` | done | 34 tests: line endings, encoding, path validation, binary/preview caps, recovery round-trip, watcher debounce/self-save suppression |
 | Golden behavioral suite | done | `tests/golden_cases.json` + harness; runs with `bun run test` (Roadmap Phase 2) |
 | Perf benchmarks / budgets | **open** | Roadmap Phase 7 |
 | `cargo clippy -- -D warnings` | done | enforced in CI on 3-OS matrix |
@@ -199,11 +201,20 @@ code wins, and STATUS reflects the code.
 
 1. **Branch protection** - the only remaining Phase 1 item; requires repo-admin
    enablement on GitHub (required status checks, strict, on `main`).
-2. **AGENTS.md drift** - reconciled in Phase 0; this STATUS file is now authoritative.
-3. **About dialog** unhandled (`menu-about` emitted, no listener).
-4. **Virtualized large-file loading** - files > 50 MB open read-only (Phase 5);
+2. **Recent-files UI** - no entry point: the native "Open Recent" submenu is a
+   disabled placeholder and the recent dialog is never opened.
+3. **Find/Replace** - no whole-word option and no visible match count.
+4. **Shebang detection** - implemented and unit-tested, but not wired to call sites.
+5. **Watcher unwatch** - the Ctrl+W / menu / tab-bar close paths bypass
+   `unwatchPath`, so a closed tab's file may stay watched until Save-As or exit.
+6. **About dialog** - shows name/version in an in-app dialog; a real About window
+   with licenses/offline disclaimer is still open (Roadmap Phase 9).
+7. **Virtualized large-file loading** - files > 50 MB open read-only (Phase 5);
    true streaming/virtualized editing is deferred.
-5. **Manual SR session** - automated a11y checks are done (Phase 3); the
+8. **Manual SR session** - automated a11y checks are done (Phase 3); the
    VoiceOver/NVDA session checklist is in `docs/a11y-notes.md` and needs a
    human.
-6. **Perf budgets** not yet enforced (golden regression suite is done - Phase 2).
+9. **`unsafe` CI guard** - the code is clean but no CI check prevents new `unsafe`
+   blocks (Roadmap Phase 8).
+10. **Perf budgets** not yet enforced, and the Phase 0 perf baseline is still not
+    captured (Roadmap Phase 7).

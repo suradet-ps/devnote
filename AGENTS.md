@@ -22,8 +22,9 @@
 > **Note (v1.0.0):** This structure supersedes the original scaffold. The app now
 > uses a **native OS titlebar** (`decorations: true`, no `TitleBar.svelte`),
 > **`tauri-plugin-store`** for settings (not `localStorage`), a **recovery** state,
-> a **clipboard-manager** plugin, and **macOS Apple-Events** handling for
-> "Open With" / drag-to-icon. See `docs/STATUS.md` for the verified current-state table.
+> a **clipboard-manager** plugin, and Tauri's `RunEvent::Opened` for macOS
+> "Open With" / drag-to-icon (no custom Apple Event FFI, no `unsafe`). See
+> `docs/STATUS.md` for the verified current-state table.
 
 ```
 devnote/
@@ -49,41 +50,54 @@ devnote/
 │   └── src/
 │       ├── main.rs
 │       ├── lib.rs             ← app builder, plugin registration, native menu, event routing
-│       ├── macos_events.rs    ← macOS "Open With" / Apple Events (cfg target_os = "macos")
 │       ├── commands/
-│       │   ├── mod.rs         ← file, recovery, window modules
+│       │   ├── mod.rs         ← file, recovery, watcher, window modules
 │       │   ├── file.rs        ← open / read / save / save_as / recent / size / pending
-│       │   ├── window.rs      ← set_window_title
+│       │   ├── watcher.rs     ← watch_file / unwatch_file (external-change detection)
+│       │   ├── window.rs      ← set_window_title / print_current
 │       │   └── recovery.rs    ← save / check / clear recovery data
 │       └── state/
-│           ├── mod.rs
+│           ├── mod.rs         ← PendingFilesState
 │           ├── recent.rs      ← RecentFilesState (JSON persistence, max 10)
-│           └── recovery.rs    ← RecoveryState (autosave entries)
+│           ├── recovery.rs    ← RecoveryState (autosave entries)
+│           └── watcher.rs     ← FileWatcherState (notify + debounce)
 ├── src/
 │   ├── app.html
+│   ├── app.css                ← design tokens + global styles
 │   ├── lib/
 │   │   ├── stores/
-│   │   │   ├── tabs.svelte.ts        ← tab list, active tab (Svelte 5 runes)
-│   │   │   ├── recent.svelte.ts      ← recent files list (mirrors Rust state)
-│   │   │   └── settings.svelte.ts    ← theme, font, wrap, persisted via tauri-plugin-store
-│   │   ├── components/
+│   │   │   ├── tabs.svelte.ts          ← tab list, active tab (Svelte 5 runes)
+│   │   │   ├── recent.svelte.ts        ← recent files list (mirrors Rust state)
+│   │   │   ├── settings.svelte.ts      ← theme, font, wrap, locale (tauri-plugin-store)
+│   │   │   └── editor-status.svelte.ts ← cursor / selection stats
+│   │   ├── components/                 ← TabBar, Tab, Editor, StatusBar, FindReplace,
+│   │   │                                  ConfirmDialog, EncodingPicker, SymbolPicker
 │   │   ├── codemirror/
 │   │   │   ├── setup.ts       ← editor state factory (Compartment-based reconfig)
 │   │   │   ├── theme.ts       ← DevNote light + dark CM themes
-│   │   │   └── extensions.ts  ← on-demand language packs loader
+│   │   │   ├── extensions.ts  ← on-demand language packs loader
+│   │   │   ├── guides.ts      ← CSS-only indent guides
+│   │   │   └── whitespace.ts  ← visible-whitespace decorations
 │   │   ├── editor/
-│   │   │   └── actions.ts     ← EditorAction discriminated-union event bus
+│   │   │   ├── actions.ts     ← EditorAction discriminated-union event bus
+│   │   │   ├── search.ts      ← find/replace pure logic
+│   │   │   ├── edit-history.ts← edit-site jump history
+│   │   │   └── symbols.ts     ← Go-to-Symbol parser
+│   │   ├── i18n/
+│   │   │   ├── i18n.svelte.ts ← t() helper (en + th, param interpolation)
+│   │   │   └── translations.ts← typed dictionaries
 │   │   ├── tauri/
 │   │   │   └── ipc.ts         ← typed invoke() wrappers
+│   │   ├── types/             ← shared TypeScript types
 │   │   └── utils/
 │   │       ├── detect-lang.ts ← file extension / shebang → CodeMirror language
+│   │       ├── ensure-ext.ts  ← default extension on save
 │   │       ├── error.ts       ← errorMessage(e: unknown) helper
-│   │       └── idle.ts        ← idle/autosave scheduling
+│   │       ├── idle.ts        ← idle/autosave scheduling
+│   │       └── recovery.ts    ← recovery hash/coalescing helpers
 │   └── routes/
 │       ├── +layout.svelte
 │       └── +page.svelte       ← root layout, global keydown handler, event listeners
-├── static/
-│   └── fonts/                 ← JetBrains Mono (editor), Inter (UI)
 └── package.json
 ```
 
@@ -96,34 +110,35 @@ devnote/
 
 ### 2.1 CSS Token Surface
 
-Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
+Tokens are defined once in `src/app.css` (`:root`, plus a `[data-theme="dark"]`
+override block); **never inline hex**.
 
 ```css
 :root {
   /* Surface */
-  --canvas:              #faf9f5;
-  --surface-soft:        #f5f0e8;
-  --surface-card:        #efe9de;
-  --surface-cream-strong:#e8e0d2;
+  --canvas:              #FCFBF7;
+  --surface-soft:        #F8F5EF;
+  --surface-card:        #F4F1EA;
+  --surface-cream-strong:#ECE7DD;
   --surface-dark:        #181715;
   --surface-dark-elevated:#252320;
   --surface-dark-soft:   #1f1e1b;
-  --hairline:            #e6dfd8;
-  --hairline-soft:       #ebe6df;
+  --hairline:            #E2DEC9;
+  --hairline-soft:       #E8E4D3;
 
   /* Brand */
   --primary:             #cc785c;
   --primary-active:      #a9583e;
-  --primary-disabled:    #e6dfd8;
+  --primary-disabled:    #E2DEC9;
   --accent-teal:         #5db8a6;
   --accent-amber:        #e8a55a;
 
   /* Text */
-  --ink:                 #141413;
-  --body-strong:         #252523;
-  --body:                #3d3d3a;
-  --muted:               #6c6a64;
-  --muted-soft:          #8e8b82;
+  --ink:                 #2c2b29;
+  --body-strong:         #333230;
+  --body:                #454542;
+  --muted:               #7a7873;
+  --muted-soft:          #9a9893;
   --on-primary:          #ffffff;
   --on-dark:             #faf9f5;
   --on-dark-soft:        #a09d96;
@@ -132,6 +147,9 @@ Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
   --success:             #5db872;
   --warning:             #d4a017;
   --error:               #c64545;
+
+  /* Editor */
+  --indent-guide:        rgba(226, 222, 201, 0.55);
 
   /* Radius */
   --r-xs: 4px;
@@ -165,7 +183,7 @@ Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
 | Window chrome (titlebar, tabbar) | `--surface-dark` | Dark navy, `--on-dark` text |
 | Editor background (light theme) | `--canvas` | Warm cream |
 | Editor background (dark theme) | `--surface-dark` | Consistent with chrome |
-| Status bar | `--surface-dark-elevated` | Slightly lighter dark |
+| Status bar | `--surface-soft` | Muted text, hairline top border |
 | Find/Replace panel | `--surface-card` | Cream card, hairline border |
 | Dialogs / modals | `--canvas` with `--hairline` border | |
 | Active tab | `--canvas` (light) / `--surface-dark-elevated` (dark) | |
@@ -181,11 +199,11 @@ Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
 {
   "app": {
     "windows": [{
-      "title": "devnote",
-      "width": 1200,
-      "height": 800,
-      "minWidth": 600,
-      "minHeight": 400,
+      "title": "DevNote",
+      "width": 960,
+      "height": 640,
+      "minWidth": 480,
+      "minHeight": 360,
       "decorations": true,
       "transparent": false
     }]
@@ -219,6 +237,7 @@ chardet     = { version = "0.2", default-features = false }  # encoding detect
 log         = "0.4"
 simplelog   = "0.12"                  # file logging
 tempfile    = "3"                     # atomic save (NamedTempFile)
+notify      = "8"                     # external-change watcher
 ```
 
 > **No `tauri-plugin-fs` on the renderer.** File I/O is performed exclusively by
@@ -257,7 +276,9 @@ tempfile    = "3"                     # atomic save (NamedTempFile)
 
 ## 4. Rust Commands Reference
 
-All commands live in `src-tauri/src/commands/`. Every command **must** return `Result<T, String>` - never panic, map all errors with `.map_err(|e| e.to_string())`.
+All commands live in `src-tauri/src/commands/`. Every command returns
+`Result<T, String>` - never panic, map all errors with `.map_err(|e| e.to_string())`
+- with one documented exception: `unwatch_file` returns `()` (see 4.3).
 
 ### 4.1 `commands/file.rs`
 
@@ -274,9 +295,21 @@ pub async fn open_file(
 #[tauri::command]
 pub async fn read_file(path: String) -> Result<FilePayload, String>
 
-/// Save content to existing path
+/// Re-read with a user-chosen encoding (low-confidence override)
 #[tauri::command]
-pub async fn save_file(path: String, content: String) -> Result<(), String>
+pub async fn read_file_with_encoding(
+    path: String,
+    encoding: String,
+) -> Result<FilePayload, String>
+
+/// Save content to an existing path (line ending + encoding preserved)
+#[tauri::command]
+pub async fn save_file(
+    path: String,
+    content: String,
+    line_ending: Option<String>,
+    encoding: Option<String>,
+) -> Result<(), String>
 
 /// Save As dialog → returns chosen path
 #[tauri::command]
@@ -284,7 +317,13 @@ pub async fn save_file_as(
     app: tauri::AppHandle,
     content: String,
     suggested_name: Option<String>,
+    line_ending: Option<String>,
+    encoding: Option<String>,
 ) -> Result<Option<String>, String>
+
+/// Soft-cap check (> 10 MB) before opening a recent path
+#[tauri::command]
+pub async fn check_file_size(path: String) -> Result<String, String>
 
 /// Append path to recent-files list (max 10, persisted to AppData)
 #[tauri::command]
@@ -305,6 +344,20 @@ pub async fn remove_recent_file(
     state: tauri::State<'_, RecentFilesState>,
     path: String,
 ) -> Result<(), String>
+
+/// Drain file paths captured before the frontend mounted
+#[tauri::command]
+pub async fn get_pending_files(
+    state: tauri::State<'_, crate::PendingFilesState>,
+) -> Result<Vec<String>, String>
+
+/// Frontend-ready handshake: drains pending files and re-emits
+/// `file-opened` for each (closes the cold-start race)
+#[tauri::command]
+pub async fn frontend_ready(
+    state: tauri::State<'_, crate::PendingFilesState>,
+    app: tauri::AppHandle,
+) -> Result<Vec<String>, String>
 ```
 
 **`FilePayload` struct:**
@@ -314,9 +367,11 @@ pub async fn remove_recent_file(
 pub struct FilePayload {
     pub path: String,
     pub content: String,
-    pub file_name: String,  // just the filename part
-    pub encoding: String,   // e.g. "UTF-8", "UTF-16LE", "WINDOWS-1252"
-    pub line_ending: String, // "LF" | "CRLF" | "CR"
+    pub file_name: String,          // just the filename part
+    pub encoding: String,           // e.g. "UTF-8", "UTF-16LE", "WINDOWS-1252"
+    pub line_ending: String,        // "LF" | "CRLF" | "CR"
+    pub preview: bool,              // true when > 50 MB (read-only preview)
+    pub encoding_confident: bool,   // false when chardet confidence < 0.6
 }
 ```
 
@@ -326,32 +381,47 @@ pub struct FilePayload {
 /// Update the native window title
 #[tauri::command]
 pub fn set_window_title(window: tauri::Window, title: String) -> Result<(), String>
+
+/// Open the OS print dialog for the current webview (print to PDF)
+#[tauri::command]
+pub fn print_current(webview: tauri::Webview) -> Result<(), String>
 ```
 
-### 4.3 `commands/recovery.rs`
+### 4.3 `commands/watcher.rs`
+
+```rust
+/// Start watching a file while its tab is open
+#[tauri::command]
+pub fn watch_file(state: tauri::State<'_, FileWatcherState>, path: String) -> Result<(), String>
+
+/// Stop watching a file (tab closed or Save-As changed the path)
+/// Note: returns `()` - the one command that is not `Result`-returning.
+#[tauri::command]
+pub fn unwatch_file(state: tauri::State<'_, FileWatcherState>, path: String)
+```
+
+### 4.4 `commands/recovery.rs`
 
 ```rust
 /// Persist unsaved tab contents for crash recovery (called on idle/autosave)
 #[tauri::command]
 pub async fn save_recovery_data(
-    state: tauri::State<'_, RecoveryState>,
-    entries: Vec<RecoveryEntry>,
+    app: tauri::AppHandle,
+    tabs: Vec<RecoveryEntry>,
 ) -> Result<(), String>
 
 /// Check whether recovery data exists (frontend prompts Restore on launch)
 #[tauri::command]
 pub async fn check_recovery_data(
-    state: tauri::State<'_, RecoveryState>,
-) -> Result<bool, String>
+    app: tauri::AppHandle,
+) -> Result<Option<Vec<RecoveryEntry>>, String>
 
 /// Clear recovery data (after Restore accepted or Discard)
 #[tauri::command]
-pub async fn clear_recovery_data(
-    state: tauri::State<'_, RecoveryState>,
-) -> Result<(), String>
+pub async fn clear_recovery_data(app: tauri::AppHandle) -> Result<(), String>
 ```
 
-### 4.4 `state/recent.rs`
+### 4.5 `state/recent.rs`
 
 ```rust
 pub struct RecentFilesState {
@@ -364,7 +434,7 @@ impl RecentFilesState {
 }
 ```
 
-### 4.5 `state/recovery.rs`
+### 4.6 `state/recovery.rs`
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -400,6 +470,7 @@ export interface Tab {
   cursorLine: number
   cursorCol: number
   scrollTop: number
+  readOnly: boolean    // true for > 50 MB preview tabs
 }
 
 // Derived: isDirty = tab.content !== tab.savedContent
@@ -421,11 +492,15 @@ export interface Tab {
 ### 5.2 Recent Files Store (`stores/recent.svelte.ts`)
 
 ```typescript
-// Mirrors Rust state - calls get_recent_files on mount
+// Mirrors Rust state - calls get_recent_files on init
 // Calls add_recent_file after every open/save-as
 // Svelte 5 runes ($state) - NOT legacy svelte/store readable/writable
-export const recentFiles: string[]
-export function refreshRecentFiles(): Promise<void>
+export const recentStore = {
+  recentFiles: string[],
+  refresh(): Promise<void>,
+  add(path: string): Promise<void>,
+  remove(path: string): Promise<void>,
+}
 ```
 
 ### 5.3 Settings Store (`stores/settings.svelte.ts`)
@@ -440,9 +515,11 @@ export interface Settings {
   showStatusBar: boolean    // default true (v0.2.0+)
   tabSize: number           // default 4
   insertSpaces: boolean     // default true
+  locale: 'system' | 'en' | 'th'  // default 'system' (Phase 3)
 }
 // Persisted via tauri-plugin-store (.settings.dat); falls back to localStorage
-// 'devnote-settings' (and migrates legacy 'sabot-settings') on first load
+// 'devnote-settings' (and migrates legacy 'sabot-settings') on first load;
+// unknown keys / out-of-range values are sanitized back to defaults
 ```
 
 ---
@@ -462,37 +539,43 @@ export interface Settings {
 ### 6.2 `TabBar.svelte`
 
 - Background: `--surface-dark`
-- Tab height: 36px
+- Tab height: 32px
 - Inactive tab: background `--surface-dark-soft`, text `--on-dark-soft`
 - Active tab: background `--canvas` (light theme) or `--surface-dark-elevated` (dark theme), text `--on-dark` or `--ink`
 - Tab shows: `{fileName}{dirtyDot}` + close `×` button on hover
 - Overflow: horizontal scroll, no wrapping
 - `+` button at end of tab list → calls `newTab()`
-- Right-click on tab → `ContextMenu` with: Close, Close Others, Close All, Copy Path
+- Right-click on tab → context menu (implemented inside `TabBar.svelte`): Close, Close Others, Close All, Copy Path, Reveal in File Explorer
 
 ### 6.3 `Editor.svelte`
 
 Wraps a CodeMirror 6 `EditorView`. Props:
 
 ```typescript
-export let tabId: string
-export let content: string
-export let language: string
-export let settings: Settings
+interface Props {
+  tabId: string
+  content: string
+  language: string
+  indentGuides: boolean
+  visibleWhitespace: boolean
+  readOnly: boolean
+  onContentChange: (content: string) => void
+  onCursorUpdate: (line: number, col: number) => void
+}
 ```
 
-- On `content` prop change from outside (tab switch): update CM state without triggering the `onChange` loop
-- On user edit: dispatch `content-change` event → tabs store `updateContent()`
+- On `content` prop change from outside (tab switch): update CM state without triggering the change callback
+- On user edit: `onContentChange(content)` → tabs store `updateContent()`
 - Saves cursor position and scroll on tab blur; restores on tab focus
 - The editor fills `100%` of the remaining viewport height (flex-grow)
 - CodeMirror theme: see Section 7
 
 ### 6.4 `StatusBar.svelte`
 
-- Background: `--surface-dark-elevated`, text `--on-dark-soft`, 12px Inter
+- Background: `--surface-soft`, text `--muted`, 11px Inter, 24px tall
 - Left: `{language}` badge (e.g. "Rust")
 - Center: encoding (`UTF-8`), line endings (`LF` / `CRLF`)
-- Right: `Ln {line}, Col {col}` | `{wordCount} words` | `{charCount} chars`
+- Right: `Ln {line}, Col {col}` | `{wordCount} words` | `{charCount} chars`; selection-relative stats when a selection exists
 - Clicking language badge → opens language picker dropdown
 
 ### 6.5 `FindReplace.svelte`
@@ -504,8 +587,9 @@ Activated by `Ctrl+F` (find only) or `Ctrl+H` (find+replace).
 - Contains:
   - Find input + `[↑] [↓]` match navigation buttons + `✕` close
   - Replace input (shown only in replace mode) + `[Replace] [Replace All]` buttons
-  - Toggle options: `[Aa]` case sensitive, `[.*]` regex, `[ab]` whole word
-- Match count badge: `3 of 12` in `--muted` color
+  - Toggle options: `[Aa]` case sensitive, `[.*]` regex
+- No whole-word toggle and no visible match-count badge (not implemented; see
+  `docs/STATUS.md` Known Gaps)
 - Uses CodeMirror's built-in `searchKeymap` + `SearchQuery` for the actual search logic
 - Keyboard: `Enter`/`Shift+Enter` = next/prev match, `Escape` = close
 
@@ -516,23 +600,19 @@ Modal dialog for "Unsaved changes" prompt.
 - Background: `--canvas`, border: `1px solid --hairline`, radius: `--r-lg`
 - Backdrop: `rgba(20,20,19,0.4)`
 - Buttons: `[Save]` (primary coral), `[Don't Save]` (secondary), `[Cancel]`
-- Uses Svelte's `createEventDispatcher` - resolves a Promise returned by `showConfirm()`
+- Props are plain callbacks (`onSave` / `onDiscard` / `onCancel`) - **no**
+  `createEventDispatcher`; the caller (`+page.svelte`) owns the follow-up logic
+- Traps Tab/Shift+Tab and returns focus to the editor on close (the only dialog
+  that does; others focus their first control and close on Esc)
 
-```typescript
-// Usage in tabs store:
-const result = await showConfirm({
-  title: "Save changes?",
-  message: `"${tab.fileName}" has unsaved changes.`
-}) // → 'save' | 'discard' | 'cancel'
-```
+### 6.7 Tab context menu (inside `TabBar.svelte`)
 
-### 6.7 `ContextMenu.svelte`
-
-Right-click menu on a tab (and elsewhere where needed).
+There is no separate `ContextMenu.svelte`; the menu markup and keyboard handling
+live in `TabBar.svelte`.
 
 - Background: `--surface-dark-elevated`, text: `--on-dark`, radius: `--r-md`
 - Tab context items: Close, Close Others, Close All, Copy Path, Reveal in File Explorer
-- Launched at cursor position; closes on outside-click / Escape; keyboard-navigable.
+- Launched at cursor position; closes on outside-click / Escape; keyboard-navigable
 
 ---
 
@@ -541,28 +621,26 @@ Right-click menu on a tab (and elsewhere where needed).
 ### 7.1 Required packages
 
 ```json
-"@codemirror/state": "^6",
-"@codemirror/view": "^6",
-"@codemirror/commands": "^6",
-"@codemirror/search": "^6",
-"@codemirror/language": "^6",
-"@codemirror/lang-javascript": "^6",
-"@codemirror/lang-typescript": "^6",
-"@codemirror/lang-rust": "^6",
-"@codemirror/lang-python": "^6",
-"@codemirror/lang-html": "^6",
+"codemirror": "^6",
 "@codemirror/lang-css": "^6",
-"@codemirror/lang-markdown": "^6",
+"@codemirror/lang-cpp": "^6",
+"@codemirror/lang-html": "^6",
+"@codemirror/lang-java": "^6",
+"@codemirror/lang-javascript": "^6",   // also covers TypeScript (typescript: true)
 "@codemirror/lang-json": "^6",
+"@codemirror/lang-markdown": "^6",
+"@codemirror/lang-php": "^6",
+"@codemirror/lang-python": "^6",
+"@codemirror/lang-rust": "^6",
 "@codemirror/lang-sql": "^6",
 "@codemirror/lang-xml": "^6",
-"@codemirror/lang-vue": "^6",
-"@codemirror/lang-cpp": "^6",
-"@codemirror/lang-java": "^6",
-"@codemirror/lang-php": "^6",
-"@codemirror/theme-one-dark": "^6",
-"codemirror": "^6"
+"@codemirror/legacy-modes": "^6",      // shell, go, ruby, yaml, toml
+"@codemirror/theme-one-dark": "^6"
 ```
+
+> There is no `@codemirror/lang-typescript` or `@codemirror/lang-vue` dependency;
+> TypeScript uses `lang-javascript` with `{ typescript: true }` and Vue falls back
+> to JavaScript (see `codemirror/extensions.ts`).
 
 ### 7.2 Base extensions (`codemirror/setup.ts`)
 
@@ -631,22 +709,22 @@ export const devnoteLightTheme = EditorView.theme({
 ### 7.4 Language Detection (`utils/detect-lang.ts`)
 
 ```typescript
-const EXT_MAP: Record<string, string> = {
-  rs: 'rust', ts: 'typescript', tsx: 'typescript',
-  js: 'javascript', jsx: 'javascript',
-  py: 'python', html: 'html', css: 'css',
-  md: 'markdown', json: 'json', sql: 'sql',
-  xml: 'xml', vue: 'vue', cpp: 'cpp', cc: 'cpp',
-  java: 'java', php: 'php', toml: 'toml', yaml: 'yaml',
-  // fallback → plain text
-}
-
-export function detectLanguage(path: string | null): string {
-  if (!path) return 'text'
-  const ext = path.split('.').pop()?.toLowerCase() ?? ''
-  return EXT_MAP[ext] ?? 'text'
+export function detectLanguage(path: string | null, content?: string): string {
+  if (!path) {
+    // Try shebang detection for untitled files
+    if (content) return detectFromShebang(content);
+    return 'text';
+  }
+  const ext = path.split('.').pop()?.toLowerCase() ?? '';
+  // extension map covers rs/ts/js/py/html/css/md/json/sql/xml/vue/svelte/cpp/c/
+  // java/php/go/rb/toml/yaml/sh/bash/zsh/fish + plain-text extensions
+  return extMap[ext] ?? 'text';
 }
 ```
+
+> `detectFromShebang` exists and is unit-tested, but no call site currently passes
+> `content`, so shebang detection is not active in the app (see `docs/STATUS.md`
+> Known Gaps).
 
 ---
 
@@ -667,6 +745,12 @@ export function detectLanguage(path: string | null): string {
 | `F3` | Find next |
 | `Shift+F3` | Find previous |
 | `Ctrl+G` | Go to line |
+| `Ctrl+D` | Add next occurrence (multi-cursor) |
+| `Ctrl+Shift+L` | Select all occurrences |
+| `Ctrl+Shift+P` | Go to symbol |
+| `Ctrl+P` | Print (opens the OS print dialog / PDF) |
+| `Ctrl+Alt+-` / `Ctrl+Alt+=` | Jump to previous / next edit |
+| `Ctrl+Q` | Quit (runs the dirty-tab close interceptor) |
 | `Ctrl+Z` | Undo (CodeMirror history) |
 | `Ctrl+Shift+Z` | Redo |
 | `Ctrl++` | Increase font size |
@@ -704,9 +788,15 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 ## 10. Recent Files
 
 - Stored on Rust side: `{app_data_dir}/recent_files.json` - list of absolute paths (max 10)
-- Menu: shown in a dropdown from a "Recent" button in the toolbar, or accessible via `File` menu if implemented
-- On open from recent: call `read_file(path)` → if file no longer exists, call `remove_recent_file(path)` and show a toast "File not found"
-- On app start: call `get_recent_files()` → populate `recentFiles` store
+- Commands: `add_recent_file` (after every open/save-as), `get_recent_files` (on
+  init), `remove_recent_file` (file missing), mirrored by `recentStore`
+- **Known gap:** there is no UI entry point yet. The native "Open Recent" submenu
+  is a disabled `(No Recent Files)` placeholder that is never rebuilt from
+  `RecentFilesState`, and the Svelte recent dialog is rendered but never opened.
+  The `recent-<path>` menu handler and `menu-open-recent` listener are wired for
+  when the submenu is populated.
+- On open from recent: `handleOpenRecent(path)` calls `read_file(path)`; if the
+  file no longer exists it calls `remove_recent_file(path)` and shows a toast
 
 ---
 
@@ -714,7 +804,7 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 
 - `isDirty(tab)` = `tab.content !== tab.savedContent`
 - Dirty indicator: `•` appended to tab name, e.g. `main.rs •`
-- Title bar shows `•` before app name when active tab is dirty: `• DevNote - main.rs`
+- Title bar shows `• filename - DevNote` when the active tab is dirty
 - Dirty check triggers on: tab close, window close, open new file in same tab (not applicable here - we always open in new tab)
 - After successful save: `markSaved(id, path)` - sets `savedContent = content`
 
@@ -730,7 +820,7 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 
 ### Save (Ctrl+S)
 1. If `tab.path === null` → redirect to Save As flow
-2. Call `invoke('save_file', { path, content })`
+2. Call `invoke('save_file', { path, content, lineEnding, encoding })`
 3. On success: `markSaved(id, path)`
 4. Update window title (remove dirty indicator)
 
@@ -754,7 +844,9 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 ## 14. Coding Standards
 
 ### Rust
-- All commands `async` (use `tokio::fs` for I/O, not `std::fs`)
+- I/O commands are `async` and use `tokio::fs`; a few commands are sync by design
+  (`watch_file` / `unwatch_file`, `set_window_title`, `print_current`)
+- No `unsafe` anywhere in `src-tauri/src` (CI guard still pending, see ROADMAP Phase 8)
 - No `unwrap()` in production paths - use `?` + `map_err`
 - All Tauri state wrapped in `Mutex<T>` or `RwLock<T>`
 - `#[derive(Debug, serde::Serialize, serde::Deserialize)]` on all shared structs
@@ -808,7 +900,6 @@ cd src-tauri && cargo test
 - Terminal pane
 - File tree / project explorer (Phase 2 candidate)
 - Minimap
-- Multiple cursors beyond CM default
 
 ---
 
@@ -821,6 +912,6 @@ cd src-tauri && cargo test
 5. **When adding a Tauri command**, update `commands/mod.rs` AND register in `lib.rs` `.invoke_handler()`.
 6. **When adding a permission**, update `capabilities/default.json`.
 7. **Dirty flag must be checked** before any destructive action (close tab, close window, open in same tab).
-8. **CodeMirror state lives inside `Editor.svelte`** - do not store CM `EditorView` in a Svelte store (it is not serializable). Use events to communicate content changes out.
+8. **CodeMirror state lives inside `Editor.svelte`** - do not store CM `EditorView` in a Svelte store (it is not serializable). Use the `onContentChange` / `onCursorUpdate` callbacks to communicate out.
 9. **Tab IDs are `crypto.randomUUID()`** - never use array index as ID.
 10. **All dialogs are Svelte components** - never use browser `alert/confirm/prompt`.

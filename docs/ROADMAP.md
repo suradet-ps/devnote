@@ -27,61 +27,64 @@ Verified directly against the repository, not assumed:
   TypeScript 5, package manager `bun`. Version `1.0.0` in both `package.json` and
   `Cargo.toml`.
 - **File I/O** (`src-tauri/src/commands/file.rs`): open / read / save / save-as,
-  absolute-path validation + canonicalization (symlink-escape guard), encoding
+  absolute-path validation (canonicalization + symlink-escape guard on reads), encoding
   detection (`chardet` + `encoding_rs`, UTF-8/UTF-16 LE/BE/Windows-1252), CRLF/LF/CR
-  line-ending preservation, binary (NUL) detection, 10 MB soft / 200 MB hard size
-  cap, atomic saves via `tempfile::NamedTempFile` + rename, permission-denied →
-  "Save Copy" fallback.
+  line-ending preservation, binary (NUL) detection, 10 MB soft warning (path opens
+  confirm) / 200 MB hard size cap, atomic saves via `tempfile::NamedTempFile` +
+  rename, permission-denied → "Save Copy" fallback.
 - **Window** (`commands/window.rs`): `set_window_title`, native titlebar
   (`decorations: true`), dirty-dot title `• filename - DevNote`.
-- **Recent files** (`state/recent.rs`, `commands/file.rs`): persisted list (max 10),
-  context-menu + OS native "Open Recent" submenu wired in `lib.rs`.
+- **Recent files** (`state/recent.rs`, `commands/file.rs`): persisted list (max 10)
+  with add/get/remove commands and a Svelte mirror store. No UI entry point yet -
+  the native "Open Recent" submenu is a disabled placeholder and the recent dialog
+  is never opened (see STATUS Known Gaps).
 - **Session recovery** (`state/recovery.rs`, `commands/recovery.rs`): 15 s
-  content-hash-coalesced autosave to `$APPDATA/devnote/recovery/`, restore-on-launch
-  prompt, Cancel keeps recovery data intact.
+  content-hash-coalesced autosave to the app-data `recovery/` dir
+  (`%APPDATA%\com.devnote.editor\recovery\` on Windows), restore-on-launch prompt,
+  Cancel keeps recovery data intact.
 - **Settings** (`stores/settings.svelte.ts`): `tauri-plugin-store`
-  (`$APPDATA/devnote/.settings.dat`) with localStorage fallback; `theme: "system"`
+  (`.settings.dat` in the app-data dir) with localStorage fallback; `theme: "system"`
   via `prefers-color-scheme`; `showStatusBar`, font size, tab size, insert spaces,
-  word wrap.
+  word wrap, `locale`.
 - **Editor** (`lib/codemirror/*`, `components/Editor.svelte`): 10+ language packs
-  loaded on demand (~110 KB initial editor bundle), dark + light themes, go-to-line,
-  word-wrap / font-size / language reconfigure via `Compartment` (no editor rebuild),
-  cursor coalescing via `requestAnimationFrame`.
+  loaded on demand (JavaScript is the only statically imported pack), dark + light
+  themes, go-to-line, word-wrap / font-size / language reconfigure via `Compartment`
+  (no editor rebuild), cursor coalescing via `requestAnimationFrame`.
 - **Tabs** (`stores/tabs.svelte.ts`, `components/Tab*.svelte`): multi-tab, dirty
   check, middle-click close, drag-reorder, "close last → new empty tab", context menu
   (Close / Close Others / Close All / Copy Path / Reveal in File Explorer).
 - **Find/Replace** (`components/FindReplace.svelte`): regex, case-sensitive,
-  whole-word, match count, Enter/Shift+Enter navigation.
+  Enter/Shift+Enter navigation, replace / replace-all wired to document
+  transactions. Whole-word search and a visible match count are not implemented
+  (see STATUS Known Gaps).
 - **Accessibility**: ARIA roles (`tablist`, `alertdialog`, `search`, `status`,
   `menu`…), `prefers-reduced-motion`, Tab-inserts-spaces behavior.
 - **OS integration**: native menu bar (File/Edit/View/Window/Help) emitting Tauri
-  events; macOS "Open With" + drag-to-icon via Apple Events (`macos_events.rs`);
-  file drag-and-drop; 50+ file-association extensions; shebang-based language
-  detection.
-- **Resilience**: file logging to `$APPDATA/devnote/logs/devnote.log`, bottom-right
-  non-blocking toasts, `Result<T, String>` everywhere, no `unwrap()` in command paths,
-  hardened CSP (no inline scripts, no external fonts), `fs:*` renderer capability
-  removed (file I/O only via Rust).
+  events; macOS "Open With" + drag-to-icon via Tauri's `RunEvent::Opened` (an early
+  buffer handles events that arrive before `setup`); file drag-and-drop; 50+
+  file-association extensions. Shebang detection exists in `detect-lang.ts` but is
+  not wired to call sites.
+- **Resilience**: file logging to the app-data `logs/devnote.log`, bottom-right
+  non-blocking toasts, `Result<T, String>` in command paths (one exception:
+  `unwatch_file` returns `()`), no `unwrap()` in command paths, hardened CSP (no
+  inline scripts, no external fonts), `fs:*` renderer capability removed (file I/O
+  only via Rust).
 - **Build**: `opt-level="z"`, `lto=true`, `strip=true`, `codegen-units=1`,
   `panic="abort"`; NSIS installer config; macOS ad-hoc + sandboxed entitlement paths.
 
-**Gaps against the stated standards (found while reading the repo):**
+**Gaps against the stated standards (verified against the repo):**
 
-- `AGENTS.md` documents an architecture (custom titlebar, `fs:*` dialog plugin,
-  `stores/recent.ts` readable, etc.) that **no longer matches the code** - it was
-  superseded by v0.2.0. AGENTS.md must be reconciled with reality (Phase 0 task).
-- **CI is complete** - `.github/workflows/ci.yml` runs frontend check/test/build,
-  the Rust fmt/clippy/test/doc gate on a 3-OS matrix, a Tauri deb-build smoke on
-  Linux, a `cargo-deny`/`cargo-audit` dependency gate, and a conventional-commits
-  PR title check (Phase 1; the one remaining item, branch protection, is a
-  repo-admin action). Note: an earlier draft of this roadmap claimed "no CI
-  exists" - that was inaccurate; the workflow predates it.
 - No automated **cross-platform release pipeline** (checksums, signed artifacts) -
   a tag-triggered Windows installer workflow (`release-windows.yml`) exists, but
   macOS/Linux artifacts, checksums, and signing are not wired (see Phase 9).
-- No **golden/regression test suite** gating editor behavior (only unit tests for
-  utils/stores/actions exist today).
-- No **benchmarks** (startup, open, save-latency) even though perf is a stated goal.
+- No **benchmarks** (startup, open, save-latency) even though perf is a stated goal
+  (Phase 7). The perf baseline is still not captured.
+- **Recent-files UI is unreachable** (native submenu is a disabled placeholder, the
+  dialog is never opened), **whole-word search / visible match count** are missing,
+  and **shebang detection** exists but is not wired to call sites.
+- The external-change watcher does not always unwatch on tab close: the Ctrl+W /
+  menu / tab-bar close paths bypass `unwatchPath` (see Phase 5 and STATUS).
+- `Save All` on window close is not covered by the golden suite.
 
 ---
 
@@ -93,11 +96,12 @@ Verified directly against the repository, not assumed:
 - [x] **Reconcile `AGENTS.md` with the actual v1.0.0 architecture** - the doc still
       described the pre-v0.2.0 custom-titlebar/`fs:*` design. Updated in
       `phase-0-reconcile` (commit `03d6c5f`) to reflect native titlebar,
-      `tauri-plugin-store`, recovery state, clipboard plugin, macOS Apple Events,
-      no renderer `fs:*`, on-demand language packs, Svelte 5 runes stores, and the
-      real `FilePayload` / command / permission layout. A spec that lies about the
-      code is worse than no spec.
-- [x] Add a top-level `STATUS.md` capturing the real, verified current-state table
+      `tauri-plugin-store`, recovery state, clipboard plugin, macOS "Open With"
+      handling, no renderer `fs:*`, on-demand language packs, Svelte 5 runes stores,
+      and the real `FilePayload` / command / permission layout. A spec that lies
+      about the code is worse than no spec. (The macOS Apple Event FFI noted there
+      was later replaced by `RunEvent::Opened` - see Phase 8.)
+- [x] Add `docs/STATUS.md` capturing the real, verified current-state table
       (per-subsystem done/open matrix + consolidated known gaps) so future phases
       have a shared ground truth. AGENTS.md now defers to STATUS.md on any conflict.
 - [x] **Verification gate (all green):**
@@ -206,8 +210,8 @@ pre-existing bugs** (see the notes below).
   invocation. CI fails if a case regresses.
 
 **Acceptance:** Every user-visible invariant above has an automated test; a
-regression in any of them fails CI. ✅ (All new tests green: 92 frontend +
-23 Rust.)
+regression in any of them fails CI. ✅ (All suites green: 116 frontend tests
+across 15 files + 34 Rust lib tests.)
 
 ---
 
@@ -227,8 +231,10 @@ PR; the one remaining item (manual screen-reader session) requires a human.
     outside-click (blur closing broke keyboard navigation).
   - No mouse traps anywhere; key map documented in README + `docs/a11y-notes.md`.
 - [x] **Focus management**: visible focus ring using `--accent-teal` token
-  (`:focus-visible`, mouse focus stays quiet); dialogs trap Tab/Shift+Tab and
-  return focus to the editor on close; Esc always cancels the topmost modal.
+  (`:focus-visible`, mouse focus stays quiet); `ConfirmDialog` traps Tab/Shift+Tab
+  and returns focus to the editor on close; the other dialogs (EncodingPicker,
+  SymbolPicker, Go-to-Line, Recent) focus their first control and close on Esc but
+  do not trap focus; Esc always cancels the topmost modal.
 - [x] **Screen-reader pass (automated part)**: `svelte-check` a11y lints at
   0 errors/0 warnings; `tablist`/`tab`/`aria-selected`, dirty-tab labels,
   `role="menu"`, `alertdialog` + `aria-modal` + labelled/describedby, status bar
@@ -279,9 +285,9 @@ Completed in the `phase-4-editor-power` PR.
   `print_current` Rust command (the JS webview API has no `print()` yet).
   `@media print` hides the app chrome so the PDF contains only the document.
 
-**Acceptance:** Each feature toggleable, documented in README shortcuts, covered by
-at least a smoke test where pure logic exists. ✅ (`EditHistory`, `symbols`,
-i18n + golden suites all green.)
+**Acceptance:** Each feature toggleable and reachable from the Edit/View menus,
+covered by at least a smoke test where pure logic exists. ✅ (`EditHistory`,
+`symbols`, i18n + golden suites all green.)
 
 ---
 
@@ -305,7 +311,8 @@ Completed in the `phase-5-file-io` PR.
 - [x] **Watch + external change detection**: `notify`-based watcher
   (`state/watcher.rs`, `commands/watcher.rs`) - files are watched only while
   their tab is open (`watch_file` on open/restore, `unwatch_file` on close and
-  Save-As path changes). Events are **debounced (500 ms)** and
+  Save-As path changes; some close shortcuts currently bypass the unwatch call -
+  see STATUS Known Gaps). Events are **debounced (500 ms)** and
   **self-save-suppressed (1 s)** so our own saves never trigger a prompt.
   The frontend shows a "File Changed on Disk - Reload / Ignore" dialog
   (warns when the tab is dirty); Reload re-reads and replaces the tab
@@ -322,13 +329,14 @@ Completed in the `phase-5-file-io` PR.
   closes on all three platforms (Alt+F4 / Cmd+Q / WM close), not just menu
   Quit; when dirty tabs exist it prevents the close and runs the
   Save All / Don't Save / Cancel flow (Cancel keeps the window, failed saves
-  abort the close). Save-All behavior is covered by the golden suite.
+  abort the close). `Save All` itself is not covered by the golden suite.
   A manual smoke on real macOS/Linux windows remains advisable before the LTS
   tag.
 
 **Acceptance:** 200 MB file opens or is safely refused ✅; external-change
 prompt works ✅ (unit-tested logic + manual smoke on macOS/Windows desirable);
-window-close dirty check verified ✅ (by design across OSes + golden tests).
+window-close dirty check verified ✅ (by design across OSes; `Save All` not yet
+covered by an automated test).
 
 ---
 
@@ -363,7 +371,7 @@ The example roadmap demands verified, not claimed, budgets. DevNote gets the sam
   - Cold start < 400 ms on a reference machine (Tauri + CodeMirror warm).
   - Open 1 MB file < 150 ms; 10 MB < 800 ms.
   - Save (atomic) 1 MB < 100 ms.
-  - Editor initial JS bundle < 150 KB gzipped (currently ~110 KB baseline - guard it).
+  - Editor initial JS bundle < 150 KB gzipped (baseline not measured in CI yet).
   - Installed app footprint < 25 MB on disk (Tauri webview shared with OS).
 - [ ] **Bundle-size budget step**: fail the build if the produced binary/installer
   exceeds the disk budget (mirror the example's "fails the build if exceeded").
@@ -380,9 +388,12 @@ without a noted exception.
 
 ## Phase 8: Security & Supply-Chain Hardening (the Phase 10 of the example)
 
-- [ ] **`unsafe` audit**: DevNote currently uses zero `unsafe` in app code (Tauri
-  internals aside). Document that explicitly and add a `grep`-style CI guard / clippy
-  lint confirming no `unsafe` blocks are introduced in `src-tauri/src`.
+- [x] **`unsafe` audit**: `src-tauri/src` contains zero `unsafe` blocks. The macOS
+  Apple Event FFI module (`macos_events.rs`, 3 `unsafe` blocks) was removed in favour
+  of Tauri's `RunEvent::Opened` with an early-buffer for pre-`setup` events, which
+  also dropped the `objc` dependency.
+- [ ] **`unsafe` CI guard**: add a `grep`-style CI check / clippy lint confirming no
+  `unsafe` blocks are introduced in `src-tauri/src`.
 - [ ] **Capability least-privilege review**: re-confirm `capabilities/default.json`
   grants only what the UI uses (no `fs:*` on renderer, dialog/shell/store scoped).
   Re-audit after every new plugin.
@@ -430,8 +441,9 @@ deny/audit green; reproducible-build notes published.
   example's field-deployment guide intent, scaled to an editor).
 - [ ] **`v1.0.0` → `v1.1.0` LTS tag**: at this point all prior phases' acceptance
   checks pass; CHANGELOG updated with the reconciliation + CI + a11y work.
-- [ ] **About dialog**: wire `menu-about` (currently emitted, not handled) to a real
-  About window showing version, licenses, and the offline disclaimer.
+- [ ] **About dialog**: `menu-about` now opens an in-app dialog with the app name
+  and version; upgrade it to a real About window showing licenses and the offline
+  disclaimer.
 
 **Acceptance:** A tagged release produces signed-or-ad-hoc installers for all three
 OSes with published checksums; deploy guide exists.
@@ -440,8 +452,9 @@ OSes with published checksums; deploy guide exists.
 
 ## Phase 10: Documentation & Onboarding
 
-- [ ] **AGENTS.md → authoritative spec**: finish Phase 0 reconciliation; keep it the
-  single source of truth for AI agents and contributors.
+- [x] **AGENTS.md → authoritative spec**: reconciled in Phase 0 and re-synced in this
+  audit (command reference, settings, shortcuts, component specs); `STATUS.md` remains
+  the ground truth on conflict.
 - [ ] **CONTRIBUTING.md**: already exists - extend with the test/CI/commit/lint
   commands, the "no scope creep beyond editor" rule, and the i18n string-extraction
   process.
