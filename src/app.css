@@ -28,7 +28,7 @@
   --warning: #d4a017;
   --error: #c64545;
 
-  /* Indent guide lines (Phase 4) — hairline at 55% alpha, theme-aware */
+  /* Indent guide lines (Phase 4) - hairline at 55% alpha, theme-aware */
   --indent-guide: rgba(226, 222, 201, 0.55);
 
   --r-xs: 4px;
@@ -121,7 +121,7 @@ input {
 }
 
 /* Keyboard focus must always be visible (Roadmap Phase 3). The teal ring
-   is the system's focus token — it only appears for keyboard navigation,
+   is the system's focus token - it only appears for keyboard navigation,
    never for mouse clicks (mouse focus stays quiet via :focus:not(:focus-visible)). */
 :focus {
   outline: none;

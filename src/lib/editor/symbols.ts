@@ -4,7 +4,7 @@ import type { SyntaxNode } from '@lezer/common';
 
 /**
  * Go-to-Symbol (Roadmap Phase 4): extracts definition sites from CodeMirror's
- * parsed syntax tree. Editor-local only — no workspace indexing. Falls back
+ * parsed syntax tree. Editor-local only - no workspace indexing. Falls back
  * to an empty list for languages without a real parser.
  *
  * Node names are the lezer grammars' (PascalCase): lezer-rust, lezer-javascript,
@@ -81,7 +81,7 @@ function nodeName(state: EditorState, node: SyntaxNode): string {
 export function extractSymbols(state: EditorState): SymbolInfo[] {
   // lezer only parses the first ~3000 chars synchronously when a language is
   // (re)configured; the rest is parsed lazily by the view. ensureSyntaxTree
-  // forces the parse forward (budgeted) and returns the complete tree — the
+  // forces the parse forward (budgeted) and returns the complete tree - the
   // state field itself keeps the stale partial tree.
   const tree = ensureSyntaxTree(state, state.doc.length, 250) ?? syntaxTree(state);
 

@@ -5,7 +5,7 @@ import { tabsStore, type FilePayload, type Tab } from './stores/tabs.svelte';
 /**
  * Golden-case harness (Roadmap Phase 2): drives the user-visible tab/store
  * invariants from `tests/golden_cases.json`. A regression in any case fails
- * this test — no separate invocation needed, it runs with `bun run test`.
+ * this test - no separate invocation needed, it runs with `bun run test`.
  */
 
 interface GoldenCase {

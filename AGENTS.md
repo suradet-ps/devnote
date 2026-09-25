@@ -92,7 +92,7 @@ devnote/
 ## 2. Design System (from docs/DESIGN.md)
 
 > AI agents **must** read `docs/DESIGN.md` in full before touching any `.svelte`, `.css`, or `.ts` UI file.
-> Every color, radius, and spacing value **must** use the CSS custom property token — **never inline hex**.
+> Every color, radius, and spacing value **must** use the CSS custom property token - **never inline hex**.
 
 ### 2.1 CSS Token Surface
 
@@ -154,7 +154,7 @@ Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
 
 ### 2.2 Typography
 
-- **UI chrome** (tab bar, toolbar, status bar, menus): `Inter`, 13–14px, weight 400–500
+- **UI chrome** (tab bar, toolbar, status bar, menus): `Inter`, 13-14px, weight 400-500
 - **Editor area**: `JetBrains Mono`, configurable size (default 14px), weight 400
 - Display labels (app title): may use `Cormorant Garamond` or `EB Garamond` as open-source substitute for Copernicus
 
@@ -200,7 +200,7 @@ Define all tokens in `src/app.html` `<style>` or a global `tokens.css`:
 `decorations: true` → we use the OS-native titlebar and OS-native menu bar
 (`lib.rs` builds a `Menu` and calls `app.set_menu`). There is **no** custom
 `TitleBar.svelte`; the window title is driven by `set_window_title` and shows
-`[•] filename — DevNote` (leading `•` marks a dirty active tab).
+`[•] filename - DevNote` (leading `•` marks a dirty active tab).
 
 ### 3.2 Required Plugins
 
@@ -257,12 +257,12 @@ tempfile    = "3"                     # atomic save (NamedTempFile)
 
 ## 4. Rust Commands Reference
 
-All commands live in `src-tauri/src/commands/`. Every command **must** return `Result<T, String>` — never panic, map all errors with `.map_err(|e| e.to_string())`.
+All commands live in `src-tauri/src/commands/`. Every command **must** return `Result<T, String>` - never panic, map all errors with `.map_err(|e| e.to_string())`.
 
 ### 4.1 `commands/file.rs`
 
 ```rust
-// Signatures only — AI writes full implementation
+// Signatures only - AI writes full implementation
 
 /// Open file dialog → returns (path, content)
 #[tauri::command]
@@ -416,14 +416,14 @@ export interface Tab {
 | `updateContent(id, content)` | Update content (marks dirty) |
 | `markSaved(id, path)` | Update savedContent + path after save |
 | `reorder(from, to)` | Drag-and-drop tab reordering |
-| `getDirtyTabs()` / `hasDirtyTabs()` | Used on window close — check all dirty tabs |
+| `getDirtyTabs()` / `hasDirtyTabs()` | Used on window close - check all dirty tabs |
 
 ### 5.2 Recent Files Store (`stores/recent.svelte.ts`)
 
 ```typescript
-// Mirrors Rust state — calls get_recent_files on mount
+// Mirrors Rust state - calls get_recent_files on mount
 // Calls add_recent_file after every open/save-as
-// Svelte 5 runes ($state) — NOT legacy svelte/store readable/writable
+// Svelte 5 runes ($state) - NOT legacy svelte/store readable/writable
 export const recentFiles: string[]
 export function refreshRecentFiles(): Promise<void>
 ```
@@ -456,7 +456,7 @@ export interface Settings {
 > Svelte layer never draws its own chrome. The native menu bar is built in `lib.rs`
 > (`build_menu`) and emits Tauri events (e.g. `menu-open`, `menu-save`) that
 > `+page.svelte` listens for. Menu items intentionally carry **no** keyboard
-> accelerators — accelerators are consumed by the OS and would hide keydown from the
+> accelerators - accelerators are consumed by the OS and would hide keydown from the
 > renderer; all shortcuts are handled by the document-level keydown handler instead.
 
 ### 6.2 `TabBar.svelte`
@@ -516,7 +516,7 @@ Modal dialog for "Unsaved changes" prompt.
 - Background: `--canvas`, border: `1px solid --hairline`, radius: `--r-lg`
 - Backdrop: `rgba(20,20,19,0.4)`
 - Buttons: `[Save]` (primary coral), `[Don't Save]` (secondary), `[Cancel]`
-- Uses Svelte's `createEventDispatcher` — resolves a Promise returned by `showConfirm()`
+- Uses Svelte's `createEventDispatcher` - resolves a Promise returned by `showConfirm()`
 
 ```typescript
 // Usage in tabs store:
@@ -661,7 +661,7 @@ export function detectLanguage(path: string | null): string {
 | `Ctrl+W` | Close current tab |
 | `Ctrl+Tab` | Next tab |
 | `Ctrl+Shift+Tab` | Previous tab |
-| `Ctrl+1`–`Ctrl+9` | Jump to tab by index |
+| `Ctrl+1`-`Ctrl+9` | Jump to tab by index |
 | `Ctrl+F` | Find |
 | `Ctrl+H` | Find & Replace |
 | `F3` | Find next |
@@ -703,7 +703,7 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 
 ## 10. Recent Files
 
-- Stored on Rust side: `{app_data_dir}/recent_files.json` — list of absolute paths (max 10)
+- Stored on Rust side: `{app_data_dir}/recent_files.json` - list of absolute paths (max 10)
 - Menu: shown in a dropdown from a "Recent" button in the toolbar, or accessible via `File` menu if implemented
 - On open from recent: call `read_file(path)` → if file no longer exists, call `remove_recent_file(path)` and show a toast "File not found"
 - On app start: call `get_recent_files()` → populate `recentFiles` store
@@ -714,9 +714,9 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 
 - `isDirty(tab)` = `tab.content !== tab.savedContent`
 - Dirty indicator: `•` appended to tab name, e.g. `main.rs •`
-- Title bar shows `•` before app name when active tab is dirty: `• DevNote — main.rs`
-- Dirty check triggers on: tab close, window close, open new file in same tab (not applicable here — we always open in new tab)
-- After successful save: `markSaved(id, path)` — sets `savedContent = content`
+- Title bar shows `•` before app name when active tab is dirty: `• DevNote - main.rs`
+- Dirty check triggers on: tab close, window close, open new file in same tab (not applicable here - we always open in new tab)
+- After successful save: `markSaved(id, path)` - sets `savedContent = content`
 
 ---
 
@@ -747,7 +747,7 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 - On error: show a toast notification (non-blocking, 4 seconds)
   - Toast style: background `--surface-dark`, text `--on-dark`, border-left `4px solid --error`, radius `--r-md`
   - Toast position: bottom-right
-- Never use `alert()` or `confirm()` — all dialogs are custom Svelte components
+- Never use `alert()` or `confirm()` - all dialogs are custom Svelte components
 
 ---
 
@@ -755,22 +755,22 @@ Implementation: listen to `tauri://close-requested` event with `event.preventDef
 
 ### Rust
 - All commands `async` (use `tokio::fs` for I/O, not `std::fs`)
-- No `unwrap()` in production paths — use `?` + `map_err`
+- No `unwrap()` in production paths - use `?` + `map_err`
 - All Tauri state wrapped in `Mutex<T>` or `RwLock<T>`
 - `#[derive(Debug, serde::Serialize, serde::Deserialize)]` on all shared structs
 - Clippy clean: `cargo clippy -- -D warnings`
 
 ### TypeScript / Svelte
-- Svelte 5 runes syntax (`$state`, `$derived`, `$effect`) — **not** legacy `$:` reactive syntax
+- Svelte 5 runes syntax (`$state`, `$derived`, `$effect`) - **not** legacy `$:` reactive syntax
 - All `invoke()` calls typed with explicit return type generics
-- No `any` — use proper types for all Tauri payloads
-- Stores use `$state` / `$derived` rune pattern exclusively — **never** legacy `writable/readable` from `svelte/store`
+- No `any` - use proper types for all Tauri payloads
+- Stores use `$state` / `$derived` rune pattern exclusively - **never** legacy `writable/readable` from `svelte/store`
 - Component props typed with TypeScript interfaces
 
 ### General
-- No inline styles — use CSS custom property tokens only
-- All user-facing strings in Thai or English (app is bilingual-ready — use a `t()` helper stub)
-- All file paths handled as strings (no `URL` objects — Tauri paths are OS strings)
+- No inline styles - use CSS custom property tokens only
+- All user-facing strings in Thai or English (app is bilingual-ready - use a `t()` helper stub)
+- All file paths handled as strings (no `URL` objects - Tauri paths are OS strings)
 
 ---
 
@@ -815,12 +815,12 @@ cd src-tauri && cargo test
 ## 17. AI Agent Instructions
 
 1. **Always read `DESIGN.md` first** before writing any UI code.
-2. **Never use inline hex values** — always `var(--token-name)`.
+2. **Never use inline hex values** - always `var(--token-name)`.
 3. **Never use `any`** in TypeScript.
 4. **Implement features in order**: File I/O → Tabs → Find/Replace → Recent Files → Syntax Highlight. Each phase must be working before the next begins.
 5. **When adding a Tauri command**, update `commands/mod.rs` AND register in `lib.rs` `.invoke_handler()`.
 6. **When adding a permission**, update `capabilities/default.json`.
 7. **Dirty flag must be checked** before any destructive action (close tab, close window, open in same tab).
-8. **CodeMirror state lives inside `Editor.svelte`** — do not store CM `EditorView` in a Svelte store (it is not serializable). Use events to communicate content changes out.
-9. **Tab IDs are `crypto.randomUUID()`** — never use array index as ID.
-10. **All dialogs are Svelte components** — never use browser `alert/confirm/prompt`.
+8. **CodeMirror state lives inside `Editor.svelte`** - do not store CM `EditorView` in a Svelte store (it is not serializable). Use events to communicate content changes out.
+9. **Tab IDs are `crypto.randomUUID()`** - never use array index as ID.
+10. **All dialogs are Svelte components** - never use browser `alert/confirm/prompt`.

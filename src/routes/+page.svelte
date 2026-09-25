@@ -225,7 +225,7 @@
   async function handleFileChangedExternal(path: string) {
     const tab = tabsStore.tabs.find((t) => t.path === path);
     if (!tab) {
-      // Tab is gone — stop watching
+      // Tab is gone - stop watching
       await ipc.unwatchFile(path).catch(() => {});
       return;
     }
@@ -238,7 +238,7 @@
       }),
       { showDiscard: true, showCancel: true, saveLabel: t('dialog.fileChangedReload'), discardLabel: t('dialog.fileChangedIgnore') },
     );
-    if (result !== 'save') return; // Ignore / Cancel — next change re-prompts
+    if (result !== 'save') return; // Ignore / Cancel - next change re-prompts
     try {
       const payload = await ipc.readFile(path);
       tabsStore.reloadTab(tab.id, payload);
@@ -611,7 +611,7 @@
         tabsStore.setActive(tabsStore.tabs[idx].id);
       }
     } else if (mod && e.key === 'q') {
-      // Cmd/Ctrl+Q — quit application. On macOS the OS usually reserves
+      // Cmd/Ctrl+Q - quit application. On macOS the OS usually reserves
       // this, but a custom handler here ensures the close-interceptor
       // (which checks for dirty tabs) runs.
       e.preventDefault();
@@ -660,7 +660,7 @@
 
   async function saveRecovery() {
     // Read-only previews can't have unsaved work and are too big to write
-    // out every 15 s — exclude them from recovery.
+    // out every 15 s - exclude them from recovery.
     const tabs = tabsStore.tabs.filter(t => !t.readOnly).map(t => ({
       file_name: t.fileName,
       content: t.content,
@@ -820,7 +820,7 @@
     void saveRecovery();
     recoveryInterval = setInterval(() => void saveRecovery(), RECOVERY_INTERVAL_MS);
 
-    // Keydown listener — on `document` with `capture: true` so it fires before
+    // Keydown listener - on `document` with `capture: true` so it fires before
     // any focused element can stopPropagation. Handles shortcuts that the
     // native menu does NOT have an accelerator for (e.g. Ctrl+Tab, F3,
     // Ctrl+1..9). For shortcuts the menu DOES accelerate, see the Tauri
@@ -840,7 +840,7 @@
     window.addEventListener('symbols-ready', symbolsReadyHandler);
 
     // Tauri menu events (emitted from Rust via window.emit). These are
-    // NOT DOM events — they must be received via listen() from
+    // NOT DOM events - they must be received via listen() from
     // @tauri-apps/api/event. The previous code used window.addEventListener
     // which never fired for these.
     const listen = listenTauriEvent;
@@ -1085,7 +1085,7 @@
 {#if showPrintOverlay}
   <div class="print-overlay">
     <div class="print-header">
-      <span class="print-title">{t('print.title')} — {activeTab?.fileName ?? ''}</span>
+      <span class="print-title">{t('print.title')} - {activeTab?.fileName ?? ''}</span>
       <button class="print-cancel" onclick={() => showPrintOverlay = false}>{t('dialog.cancel')}</button>
     </div>
     <pre class="print-body">{printContent}</pre>

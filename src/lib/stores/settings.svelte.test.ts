@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { settingsStore } from './settings.svelte';
 
 // In the happy-dom test environment the Tauri store plugin is unavailable, so
-// init() exercises the localStorage fallback path — which is exactly the
+// init() exercises the localStorage fallback path - which is exactly the
 // migration surface we want to pin down.
 
 describe('settingsStore migration & validation', () => {

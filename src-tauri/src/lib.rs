@@ -410,7 +410,7 @@ pub fn run() {
 
       app.manage(RecentFilesState::new(dir));
 
-      // External-change watcher (Phase 5) — watches files open in tabs
+      // External-change watcher (Phase 5) - watches files open in tabs
       app.manage(crate::state::watcher::FileWatcherState::new(
         app.handle().clone(),
       ));

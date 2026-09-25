@@ -127,7 +127,7 @@ describe('tabsStore', () => {
     const c = tabsStore.newTab();
     const names = tabsStore.tabs.map((t) => t.fileName);
     expect(new Set(names).size).toBe(3);
-    // ensureOneTab() only fires when the last tab is closed — and it must
+    // ensureOneTab() only fires when the last tab is closed - and it must
     // consume a fresh counter value so names never collide with history
     tabsStore.forceCloseTab(a.id);
     tabsStore.forceCloseTab(b.id);

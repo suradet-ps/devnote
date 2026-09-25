@@ -8,14 +8,14 @@
   (`--bundles deb`), a `cargo-deny` + `cargo-audit` dependency gate, and a
   conventional-commits PR title check.
 - **License policy documented**: `src-tauri/deny.toml` allows permissive
-  licenses only, with one explicit exception — `chardet` (LGPL-3.0, charset
+  licenses only, with one explicit exception - `chardet` (LGPL-3.0, charset
   detection). `src-tauri/Cargo.toml` now declares `license = "MIT"`.
 - **Dependency bump**: `plist` 1.9.0 → 1.10.0 (pulls patched `quick-xml`
   0.41.0, fixing RUSTSEC-2026-0194/0195 on the runtime XML path).
 
 ### Golden Regression Suite (Roadmap Phase 2)
 - **Golden cases**: `tests/golden_cases.json` + harness run with
-  `bun run test` — opens, dirty flags, save/undo round-trips, tab focus.
+  `bun run test` - opens, dirty flags, save/undo round-trips, tab focus.
 - **Bugs fixed by the new tests**:
   - UTF-16 files could never be opened (NUL-byte binary check) and saving as
     UTF-16 silently wrote UTF-8; saves now write real UTF-16 + BOM.
@@ -40,7 +40,7 @@
   Manual VoiceOver/NVDA session checklist: `docs/a11y-notes.md`.
 - **i18n**: new `t()` helper with typed `en` + `th` dictionaries and
   `{param}` interpolation; every user-facing string extracted. New
-  `settings.locale` (`system` / `en` / `th`) — defaults to OS language.
+  `settings.locale` (`system` / `en` / `th`) - defaults to OS language.
 
 ### Editor Power-User Features (Roadmap Phase 4)
 - **Multi-cursor**: `Ctrl+D` add next occurrence, `Ctrl+Shift+L` select all
@@ -48,11 +48,11 @@
 - **Edit-site history**: `Ctrl+Alt+-` / `Ctrl+Alt+=` jump between edit
   locations (`lib/editor/edit-history.ts`, tested).
 - **Indent guides** (CSS-only, aligned to tab stops) and **visible whitespace**
-  (spaces `·`, tabs `→`) — toggles in the View menu.
+  (spaces `·`, tabs `→`) - toggles in the View menu.
 - **Selection stats**: status bar shows selected word/char counts.
 - **Go-to-Symbol**: `Ctrl+Shift+P` filterable picker listing definitions from
   the parsed tree for Rust / JS / TS / Python (`lib/editor/symbols.ts`, tested).
-- **Print to PDF**: `Ctrl+P` / File → Print… — full-screen print overlay of the
+- **Print to PDF**: `Ctrl+P` / File → Print… - full-screen print overlay of the
   current tab opens the OS print dialog via the new `print_current` Rust
   command (JS webview API lacks `print()`).
 
@@ -63,7 +63,7 @@
 - **Chunked atomic saves**: writes stream in 1 MB chunks without duplicating
   the buffer (big saves use far less peak memory).
 - **External-change detection**: `notify` watcher prompts "Reload / Ignore"
-  when an open file changes on disk — debounced, self-save-suppressed, never
+  when an open file changes on disk - debounced, self-save-suppressed, never
   auto-reloads.
 - **Encoding override**: low-confidence detection (chardet < 0.6) opens a
   picker (UTF-8 / UTF-16LE / UTF-16BE / Windows-1252) before content loads;
@@ -72,7 +72,7 @@
   three OSes (Alt+F4 / Cmd+Q / WM close) with the Save All / Don't Save /
   Cancel flow.
 
-## v0.2.0 — Production Grade Upgrade
+## v0.2.0 - Production Grade Upgrade
 
 ### Breaking Changes
 
@@ -85,7 +85,7 @@
   - Help: About DevNote
   - Keyboard accelerators use `CmdOrCtrl` for cross-platform compatibility
 - **Native titlebar**: Changed from custom titlebar (`decorations: false`) to OS-native titlebar (`decorations: true`)
-  - Title updates reflect: `[dirty dot] filename — DevNote`
+  - Title updates reflect: `[dirty dot] filename - DevNote`
 
 #### Settings & Persistence
 - **Settings now use `tauri-plugin-store`** instead of `localStorage`

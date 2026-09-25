@@ -55,7 +55,7 @@ pub fn should_emit(
  * - Only paths registered via `watch_file` are watched (never auto-watch).
  * - Events are debounced per path.
  * - Events caused by our own saves are suppressed (self-save suppression).
- * - Never auto-reloads — the frontend decides (data-loss risk).
+ * - Never auto-reloads - the frontend decides (data-loss risk).
  */
 pub struct FileWatcherState {
   pub watcher: Mutex<Option<RecommendedWatcher>>,

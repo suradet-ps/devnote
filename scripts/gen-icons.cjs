@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * gen-icons.cjs — Tauri app-icon generator (uses @resvg/resvg-js)
+ * gen-icons.cjs - Tauri app-icon generator (uses @resvg/resvg-js)
  *
  * Usage:
  *   node scripts/gen-icons.cjs          # Normal mode

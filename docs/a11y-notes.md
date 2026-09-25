@@ -4,7 +4,7 @@ Screen-reader and keyboard-verification log for DevNote (Roadmap Phase 3).
 
 ## Automated checks (in CI, `bun run check`)
 
-- `svelte-check` runs Svelte's `a11y_*` lints — **0 errors, 0 warnings** on
+- `svelte-check` runs Svelte's `a11y_*` lints - **0 errors, 0 warnings** on
   the main branch. New warnings are treated as errors (CI `-D` discipline on
   the Rust side; svelte-check must stay clean).
 - Focus ring: global `:focus-visible` outline in `--accent-teal` (see
@@ -16,10 +16,10 @@ Screen-reader and keyboard-verification log for DevNote (Roadmap Phase 3).
 
 | Surface | Keys | Implementation |
 |---|---|---|
-| Tab bar | `←` `→` `Home` `End` move focus + activate; `Enter`/`Space` activate | roving `tabindex` (active tab = 0) — `TabBar.svelte` / `Tab.svelte` |
+| Tab bar | `←` `→` `Home` `End` move focus + activate; `Enter`/`Space` activate | roving `tabindex` (active tab = 0) - `TabBar.svelte` / `Tab.svelte` |
 | Tab close button | `Tab` to reach, `Enter`/`Space` to close | native button |
 | Context menu (right-click) | auto-focus first item; `↑` `↓` `Home` `End` cycle; `Tab` wraps; `Esc` closes; focus returns to the originating tab | `TabBar.svelte` |
-| Language picker (status bar) | auto-focus first option; `↑` `↓` `Home` `End`; `Esc` closes; outside-click closes (blur-based closing removed — it broke keyboard nav) | `StatusBar.svelte` |
+| Language picker (status bar) | auto-focus first option; `↑` `↓` `Home` `End`; `Esc` closes; outside-click closes (blur-based closing removed - it broke keyboard nav) | `StatusBar.svelte` |
 | Confirm dialog | focus first button on open; `Tab`/`Shift+Tab` trapped inside; `Esc` = Cancel; focus returns to the editor on close | `ConfirmDialog.svelte` |
 | Recent-files dialog | auto-focus; `Esc` closes | `+page.svelte` |
 | Go-to-line | auto-focus input; `Enter` go, `Esc` close | `+page.svelte` |
@@ -40,13 +40,13 @@ never leaves the app chrome.
   on go-to-line.
 - Status bar: `role="status"` with volatile values (Ln/Col/words/chars)
   `aria-hidden`; a visually-hidden `aria-live="polite"` region announces only
-  meaningful changes (language / encoding / line endings) — avoiding the
+  meaningful changes (language / encoding / line endings) - avoiding the
   keystroke-by-keystroke chatter a naive live region would cause.
 - Toast: `role="alert"`.
 
 ## Manual screen-reader session log
 
-**Status: pending — requires a human with VoiceOver (macOS) and/or NVDA
+**Status: pending - requires a human with VoiceOver (macOS) and/or NVDA
 (Windows).**
 
 Checklist for the next session:

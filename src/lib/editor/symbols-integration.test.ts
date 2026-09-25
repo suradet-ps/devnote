@@ -24,7 +24,7 @@ async function settle(): Promise<void> {
 }
 
 /**
- * Integration smoke: the real app flow — createEditorState with an async
+ * Integration smoke: the real app flow - createEditorState with an async
  * language pack, reconfigureLanguage like the editor does on mount, then
  * extract symbols. Guards the go-to-symbol runtime path.
  */

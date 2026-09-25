@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <!--
-      Development entitlements — no sandbox so that Finder "Open With"
+      Development entitlements - no sandbox so that Finder "Open With"
       and file associations work during local testing. macOS does not
       pass the file path to a sandboxed app that is only ad-hoc signed;
       the user would need a paid Developer ID to make the sandbox +

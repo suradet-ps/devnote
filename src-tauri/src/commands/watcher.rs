@@ -8,7 +8,7 @@ pub fn watch_file(state: tauri::State<'_, FileWatcherState>, path: String) -> Re
 }
 
 /// Stop watching a file (called when its tab closes). The file may already
-/// be deleted externally — best-effort canonicalization, never an error.
+/// be deleted externally - best-effort canonicalization, never an error.
 #[tauri::command]
 pub fn unwatch_file(state: tauri::State<'_, FileWatcherState>, path: String) {
   let p = std::path::PathBuf::from(&path);

@@ -3,7 +3,7 @@
 Verified current-state snapshot of the **devnote** codebase as of **v1.0.0**.
 This document is the ground truth for AI agents and contributors. It is kept in
 sync with the code; when a feature lands or changes, update both this file and
-`AGENTS.md`. Do **not** trust `AGENTS.md` alone if it disagrees with STATUS — the
+`AGENTS.md`. Do **not** trust `AGENTS.md` alone if it disagrees with STATUS - the
 code wins, and STATUS reflects the code.
 
 > Last reconciled: Phase 0 (see `ROADMAP.md`). The pre-v0.2.0 design described in
@@ -24,7 +24,7 @@ code wins, and STATUS reflects the code.
 | Editor | CodeMirror 6 (on-demand language packs) |
 | Styling | CSS custom-property tokens (DESIGN.md), no inline hex |
 | Rust | edition 2024, `bun` package manager |
-| Titlebar | **native OS** (`decorations: true`) — no custom `TitleBar.svelte` |
+| Titlebar | **native OS** (`decorations: true`) - no custom `TitleBar.svelte` |
 
 ---
 
@@ -53,7 +53,7 @@ code wins, and STATUS reflects the code.
 | Capability | Status | Notes |
 |---|---|---|
 | Native titlebar | done | `decorations: true` |
-| Dirty-dot title | done | `• filename — DevNote` via `set_window_title` |
+| Dirty-dot title | done | `• filename - DevNote` via `set_window_title` |
 | Native menu bar | done | File / Edit / View / Window / Help built in `build_menu` |
 | Menu → event routing | done | emits Tauri events (`menu-open`, `menu-save`, …); no accelerators by design |
 | Open Recent submenu | done | `recent-<path>` events; re-built dynamically |
@@ -197,13 +197,13 @@ code wins, and STATUS reflects the code.
 
 ## 14. Known Gaps (consolidated)
 
-1. **Branch protection** — the only remaining Phase 1 item; requires repo-admin
+1. **Branch protection** - the only remaining Phase 1 item; requires repo-admin
    enablement on GitHub (required status checks, strict, on `main`).
-2. **AGENTS.md drift** — reconciled in Phase 0; this STATUS file is now authoritative.
+2. **AGENTS.md drift** - reconciled in Phase 0; this STATUS file is now authoritative.
 3. **About dialog** unhandled (`menu-about` emitted, no listener).
-4. **Virtualized large-file loading** — files > 50 MB open read-only (Phase 5);
+4. **Virtualized large-file loading** - files > 50 MB open read-only (Phase 5);
    true streaming/virtualized editing is deferred.
-5. **Manual SR session** — automated a11y checks are done (Phase 3); the
+5. **Manual SR session** - automated a11y checks are done (Phase 3); the
    VoiceOver/NVDA session checklist is in `docs/a11y-notes.md` and needs a
    human.
-6. **Perf budgets** not yet enforced (golden regression suite is done — Phase 2).
+6. **Perf budgets** not yet enforced (golden regression suite is done - Phase 2).

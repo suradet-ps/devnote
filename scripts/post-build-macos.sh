@@ -1,5 +1,5 @@
 #!/bin/bash
-# post-build-macos.sh — Signs the app with ad-hoc and patches Info.plist.
+# post-build-macos.sh - Signs the app with ad-hoc and patches Info.plist.
 # Run after `bun run tauri build`.
 #
 # Usage:
@@ -58,10 +58,10 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 if [ "$USE_PRODUCTION_ENTITLEMENTS" = "true" ]; then
   ENTITLEMENTS="$PROJECT_ROOT/src-tauri/entitlements.plist"
-  echo "Using PRODUCTION entitlements (sandboxed) — file associations require Developer ID signing."
+  echo "Using PRODUCTION entitlements (sandboxed) - file associations require Developer ID signing."
 else
   ENTITLEMENTS="$PROJECT_ROOT/src-tauri/entitlements-dev.plist"
-  echo "Using DEV entitlements (no sandbox) — file associations work with ad-hoc signing."
+  echo "Using DEV entitlements (no sandbox) - file associations work with ad-hoc signing."
 fi
 
 echo "=== Step 2: Ad-hoc code signing with entitlements ==="

@@ -9,7 +9,7 @@ and the v0.2.0 record in [CHANGELOG.md](CHANGELOG.md).
 The example this roadmap was modelled on (the MenSung medical-editor roadmap) is a
 *research-grade safety-critical* project: it gates every release on a golden test
 suite and a zero-false-negative policy. DevNote is **not** safety-critical, but the
-same engineering discipline applies — phased, verifiable, with each phase done
+same engineering discipline applies - phased, verifiable, with each phase done
 before the next begins, and nothing shipped until its acceptance checks pass.
 
 > **Scope discipline.** DevNote is a *text editor*, not an IDE. The end-state target
@@ -33,7 +33,7 @@ Verified directly against the repository, not assumed:
   cap, atomic saves via `tempfile::NamedTempFile` + rename, permission-denied →
   "Save Copy" fallback.
 - **Window** (`commands/window.rs`): `set_window_title`, native titlebar
-  (`decorations: true`), dirty-dot title `• filename — DevNote`.
+  (`decorations: true`), dirty-dot title `• filename - DevNote`.
 - **Recent files** (`state/recent.rs`, `commands/file.rs`): persisted list (max 10),
   context-menu + OS native "Open Recent" submenu wired in `lib.rs`.
 - **Session recovery** (`state/recovery.rs`, `commands/recovery.rs`): 15 s
@@ -68,15 +68,15 @@ Verified directly against the repository, not assumed:
 **Gaps against the stated standards (found while reading the repo):**
 
 - `AGENTS.md` documents an architecture (custom titlebar, `fs:*` dialog plugin,
-  `stores/recent.ts` readable, etc.) that **no longer matches the code** — it was
+  `stores/recent.ts` readable, etc.) that **no longer matches the code** - it was
   superseded by v0.2.0. AGENTS.md must be reconciled with reality (Phase 0 task).
-- **CI is complete** — `.github/workflows/ci.yml` runs frontend check/test/build,
+- **CI is complete** - `.github/workflows/ci.yml` runs frontend check/test/build,
   the Rust fmt/clippy/test/doc gate on a 3-OS matrix, a Tauri deb-build smoke on
   Linux, a `cargo-deny`/`cargo-audit` dependency gate, and a conventional-commits
   PR title check (Phase 1; the one remaining item, branch protection, is a
   repo-admin action). Note: an earlier draft of this roadmap claimed "no CI
-  exists" — that was inaccurate; the workflow predates it.
-- No automated **cross-platform release pipeline** (checksums, signed artifacts) —
+  exists" - that was inaccurate; the workflow predates it.
+- No automated **cross-platform release pipeline** (checksums, signed artifacts) -
   a tag-triggered Windows installer workflow (`release-windows.yml`) exists, but
   macOS/Linux artifacts, checksums, and signing are not wired (see Phase 9).
 - No **golden/regression test suite** gating editor behavior (only unit tests for
@@ -90,7 +90,7 @@ Verified directly against the repository, not assumed:
 - [x] Tauri workspace boots, editor opens/saves, recovery + recent + settings persist
 - [x] Tests exist: `bun run test` (vitest) + `cargo test --lib` (detect_line_ending,
       normalize_line_endings, ensure_extension, validate_path, is_binary)
-- [x] **Reconcile `AGENTS.md` with the actual v1.0.0 architecture** — the doc still
+- [x] **Reconcile `AGENTS.md` with the actual v1.0.0 architecture** - the doc still
       described the pre-v0.2.0 custom-titlebar/`fs:*` design. Updated in
       `phase-0-reconcile` (commit `03d6c5f`) to reflect native titlebar,
       `tauri-plugin-store`, recovery state, clipboard plugin, macOS Apple Events,
@@ -101,8 +101,8 @@ Verified directly against the repository, not assumed:
       (per-subsystem done/open matrix + consolidated known gaps) so future phases
       have a shared ground truth. AGENTS.md now defers to STATUS.md on any conflict.
 - [x] **Verification gate (all green):**
-  - `bun run check` (svelte-check): **0 errors, 0 warnings** — verified.
-  - `cargo clippy -- -D warnings`: **0 warnings** — verified.
+  - `bun run check` (svelte-check): **0 errors, 0 warnings** - verified.
+  - `cargo clippy -- -D warnings`: **0 warnings** - verified.
   - `cargo test` (workspace lib): **6/6 passed** (`detect_line_ending`,
     `normalize_line_endings`, `ensure_extension`, `validate_path` ×2, `is_binary`).
   - **Low-memory build fix:** the dev box (≈4 GB RAM) initially crashed compiling
@@ -113,7 +113,7 @@ Verified directly against the repository, not assumed:
     and `profile.dev/test.debug = 0` so the workspace compiles on constrained
     machines. Release/CI builds keep full debug info and are unaffected.
   - Baseline perf numbers (bundle size, cold start, open/save latency): **not
-    captured** yet — defer to Phase 7 budgets once CI exists. This is the only
+    captured** yet - defer to Phase 7 budgets once CI exists. This is the only
     explicit carry-over; it is a measurement task, not a correctness gap.
 
 **Acceptance:** AGENTS.md matches the code; STATUS.md exists; frontend `check`,
@@ -125,7 +125,7 @@ low-memory `.cargo/config.toml`). Perf baseline remains open under Phase 7.
 ## Phase 1: Continuous Integration (the missing promise)
 
 This phase exists because CHANGELOG claims a CI story. The workflow already exists
-in the repo (`.github/workflows/ci.yml`); completed in the `phase-1-ci` PR — every
+in the repo (`.github/workflows/ci.yml`); completed in the `phase-1-ci` PR - every
 code-level gate below now runs on push/PR to `main`.
 
 - [x] `.github/workflows/ci.yml`, runs on push/PR to `main`:
@@ -145,9 +145,9 @@ code-level gate below now runs on push/PR to `main`.
   CHANGELOG) so the changelog/release notes can be automated later.
 - [x] `cargo-deny` + `cargo-audit` gate (license + advisory), driven by
   `src-tauri/deny.toml`. Includes one documented license exception:
-  `chardet` (LGPL-3.0) — see the deny.toml note and Phase 8.
+  `chardet` (LGPL-3.0) - see the deny.toml note and Phase 8.
 - [ ] Branch protection on `main`: required status checks (strict), no force-push,
-  no deletion — **repo-admin action on GitHub, not code**; enable after this PR
+  no deletion - **repo-admin action on GitHub, not code**; enable after this PR
   merges.
 
 **Acceptance:** A PR that breaks `check`, `clippy -D warnings`, any test,
@@ -160,7 +160,7 @@ green. (Branch protection pending manual admin enablement.)
 
 The example roadmap gates releases on a golden test suite. DevNote's equivalent is a
 behavioral regression suite that captures the invariants users actually notice.
-Completed in the `phase-2-golden` PR — **this phase surfaced and fixed three
+Completed in the `phase-2-golden` PR - **this phase surfaced and fixed three
 pre-existing bugs** (see the notes below).
 
 - [x] **Tabs state machine** (`stores/tabs.svelte.ts`): extended coverage for
@@ -174,7 +174,7 @@ pre-existing bugs** (see the notes below).
   driven by temp-dir tests: save → restore yields identical content + path,
   Discard (clear) removes the file, Cancel (no clear) preserves it, empty list
   and malformed JSON resolve to `None` (never block startup).
-  - **Bug found & fixed**: autosave hash-coalescing never coalesced — the hash
+  - **Bug found & fixed**: autosave hash-coalescing never coalesced - the hash
     included `saved_at`, so every 15 s tick rewrote the file. Now hashed on
     path+content only (`utils/recovery.ts`).
 - [x] **File I/O invariants** (`commands/file.rs`): encoding detection matrix
@@ -183,7 +183,7 @@ pre-existing bugs** (see the notes below).
   symlink canonicalization (unix), hard-cap rejection > 200 MB (sparse file),
   soft-cap opens > 10 MB, atomic save leaves no `.tmp` behind, failed save
   (readonly target, Windows) leaves the original untruncated.
-  - **Bugs found & fixed**: (1) UTF-16 files could never open — the NUL-byte
+  - **Bugs found & fixed**: (1) UTF-16 files could never open - the NUL-byte
     binary check rejected them before encoding detection; (2) saving as
     "UTF-16LE/BE" silently wrote UTF-8 (encoding_rs has no UTF-16 encoder, it
     always outputs UTF-8); saves now emit real UTF-16 + BOM via `encode_utf16`;
@@ -192,7 +192,7 @@ pre-existing bugs** (see the notes below).
   extracted into `lib/editor/search.ts` (findAll / countMatches / findNextFrom /
   replaceAll) and asserted without a DOM.
   - **Bug found & fixed**: `replace` and `replace-all` actions were **no-ops**
-    in `Editor.svelte` — now wired to real document transactions.
+    in `Editor.svelte` - now wired to real document transactions.
 - [x] **Settings migration**: `sanitizeSettings()` picks only known, type-checked
   keys from persisted data; unknown keys and out-of-range values fall back to
   defaults without throwing.
@@ -202,7 +202,7 @@ pre-existing bugs** (see the notes below).
 - [x] **Golden cases JSON** (`tests/golden_cases.json`) gating editor behavior:
   open-1252-CRLF-csv → correct encoding/endings/no dirty dot, edit → undo →
   dirty clears, dirty-tab close rejected, save-as clears dirty + updates path,
-  open-same-path focuses existing. Runs as part of `bun run test` — no separate
+  open-same-path focuses existing. Runs as part of `bun run test` - no separate
   invocation. CI fails if a case regresses.
 
 **Acceptance:** Every user-visible invariant above has an automated test; a
@@ -217,7 +217,7 @@ DevNote already has ARIA roles and `prefers-reduced-motion`. This phase makes a1
 and i18n first-class rather than incidental. Completed in the `phase-3-a11y-i18n`
 PR; the one remaining item (manual screen-reader session) requires a human.
 
-- [x] **Keyboard-only audit**: full app navigable with keyboard only —
+- [x] **Keyboard-only audit**: full app navigable with keyboard only -
   - Tab bar: roving `tabindex` + `←` `→` `Home` `End` (ARIA tabs pattern),
     `Enter`/`Space` activate.
   - Context menu: auto-focus first item, `↑`/`↓`/`Home`/`End`, Tab wraps,
@@ -235,7 +235,7 @@ PR; the one remaining item (manual screen-reader session) requires a human.
   `role="status"` with a dedicated polite live region announcing only
   language/encoding/line-ending changes (volatile Ln/Col/words/chars are
   `aria-hidden` to avoid per-keystroke announcements), toast `role="alert"`.
-- [ ] **Manual VoiceOver/NVDA session** — checklist in `docs/a11y-notes.md`,
+- [ ] **Manual VoiceOver/NVDA session** - checklist in `docs/a11y-notes.md`,
   needs a human on macOS/Windows; run before the v1.1 LTS tag.
 - [x] **i18n plumbing**: `t()` helper (`lib/i18n/i18n.svelte.ts`) with typed
   `en` + `th` dictionaries (Thai = author locale), `{param}` interpolation,
@@ -243,14 +243,14 @@ PR; the one remaining item (manual screen-reader session) requires a human.
 - [x] **Bilingual-ready settings**: `settings.locale` (`system` | `en` | `th`),
   persisted, defaults to `system` (OS locale detection, falls back to `en`).
 
-**Acceptance:** Keyboard-only + reduced-motion pass ✅; SR session logged —
+**Acceptance:** Keyboard-only + reduced-motion pass ✅; SR session logged -
 **pending manual run**; `en`+`th` strings resolve through `t()` ✅ (tested).
 
 ---
 
 ## Phase 4: Editor Power-User Features (still editor-shaped)
 
-Everything here stays inside the "text editor" box — no project tree, no terminal.
+Everything here stays inside the "text editor" box - no project tree, no terminal.
 Completed in the `phase-4-editor-power` PR.
 
 - [x] **Multi-cursor beyond CM default**: `Ctrl+D` (Add Next Occurrence) and
@@ -261,10 +261,10 @@ Completed in the `phase-4-editor-power` PR.
   `Ctrl+Alt+-` / `Ctrl+Alt+=` jump back/forward with `scrollIntoView`.
 - [x] **Bracket/indent guides**: bracket matching already existed; indent
   guides added as a CSS-only extension (`lib/codemirror/guides.ts`) aligned to
-  the tab grid — no DOM/modelling cost. Toggle: View → Indent Guides.
-  (Note: the `@replit/codemirror-indent-guides` package is no longer on npm —
+  the tab grid - no DOM/modelling cost. Toggle: View → Indent Guides.
+  (Note: the `@replit/codemirror-indent-guides` package is no longer on npm -
   replaced with a small in-repo extension.)
-- [x] **Whitespace rendering toggle**: `lib/codemirror/whitespace.ts` —
+- [x] **Whitespace rendering toggle**: `lib/codemirror/whitespace.ts` -
   visible-viewport `ViewPlugin` decorations rendering spaces as `·` and tabs
   as `→`. Toggle: View → Visible Whitespace.
 - [x] **Word count + character count + selection stats**: StatusBar now shows
@@ -272,7 +272,7 @@ Completed in the `phase-4-editor-power` PR.
   exists, fed by a coalesced selection-update path (`stores/editor-status`).
 - [x] **Go-to-Symbol** (Rust / TS / JS / Python): `Ctrl+Shift+P` opens a
   filterable `SymbolPicker` driven by the parsed syntax tree
-  (`lib/editor/symbols.ts` — tested per-language). Editor-local only, no
+  (`lib/editor/symbols.ts` - tested per-language). Editor-local only, no
   workspace indexing. Edit → Go to Symbol…
 - [x] **Print to PDF**: `Ctrl+P` (File → Print…) shows a full-screen print
   overlay of the current tab, then opens the OS print dialog via a new
@@ -289,25 +289,25 @@ i18n + golden suites all green.)
 
 Completed in the `phase-5-file-io` PR.
 
-- [x] **Large-file handling**: files in the 50–200 MB band now open in
+- [x] **Large-file handling**: files in the 50-200 MB band now open in
   **read-only preview mode** (`FilePayload.preview`, `PREVIEW_LIMIT_BYTES`):
   the editor disables editing (readOnly compartment), the status bar shows a
   "Read-only preview" badge, Ctrl+S is blocked with a toast, and preview tabs
   are excluded from the 15 s recovery writes (they cannot have unsaved work
   and are too big to write out periodically). The 200 MB hard cap still
-  refuses anything larger. *Full virtualized/streaming loading is deferred —
+  refuses anything larger. *Full virtualized/streaming loading is deferred -
   preview mode is the roadmap's minimum bar.*
 - [x] **Chunked writes**: `write_atomic` now takes the buffer by value (no
-  duplicate allocation for large docs — previously a full second copy) and
+  duplicate allocation for large docs - previously a full second copy) and
   streams it to the temp file in 1 MB chunks, keeping the atomic-rename
   guarantee. *Diff-and-append is deferred; full rewrite via atomic rename is
   kept deliberately (safety first).*
 - [x] **Watch + external change detection**: `notify`-based watcher
-  (`state/watcher.rs`, `commands/watcher.rs`) — files are watched only while
+  (`state/watcher.rs`, `commands/watcher.rs`) - files are watched only while
   their tab is open (`watch_file` on open/restore, `unwatch_file` on close and
   Save-As path changes). Events are **debounced (500 ms)** and
   **self-save-suppressed (1 s)** so our own saves never trigger a prompt.
-  The frontend shows a "File Changed on Disk — Reload / Ignore" dialog
+  The frontend shows a "File Changed on Disk - Reload / Ignore" dialog
   (warns when the tab is dirty); Reload re-reads and replaces the tab
   (`reloadTab`), Ignore dismisses until the next distinct change. Never
   auto-reloads. Pure decision logic unit-tested.
@@ -317,7 +317,7 @@ Completed in the `phase-5-file-io` PR.
   `EncodingPicker` (UTF-8 / UTF-16LE / UTF-16BE / windows-1252) and re-reads
   the file with the chosen encoding via the new `read_file_with_encoding`
   command before the content is committed to a tab.
-- [x] **Unsaved-files safety net**: verified — the `close-requested`
+- [x] **Unsaved-files safety net**: verified - the `close-requested`
   interceptor (`+page.svelte` `onCloseRequested`) fires for OS-initiated
   closes on all three platforms (Alt+F4 / Cmd+Q / WM close), not just menu
   Quit; when dirty tabs exist it prevents the close and runs the
@@ -339,7 +339,7 @@ window-close dirty check verified ✅ (by design across OSes + golden tests).
   surface tokens from DESIGN.md (no new hex, only token remap).
 - [ ] **Editor font + UI font pickers**: choose JetBrains Mono / Inter / system,
   persisted; respect `static/fonts/` presence at build (offline, no CDN).
-- [ ] **Settings UI**: a real settings window (not just menu checks) — tabs for
+- [ ] **Settings UI**: a real settings window (not just menu checks) - tabs for
   Editor / Appearance / Files / Advanced, all bound to `settings.svelte.ts`, with a
   "Reset to defaults" and live preview.
 - [ ] **Per-tab overrides**: font size / word wrap / language can be set per tab and
@@ -363,7 +363,7 @@ The example roadmap demands verified, not claimed, budgets. DevNote gets the sam
   - Cold start < 400 ms on a reference machine (Tauri + CodeMirror warm).
   - Open 1 MB file < 150 ms; 10 MB < 800 ms.
   - Save (atomic) 1 MB < 100 ms.
-  - Editor initial JS bundle < 150 KB gzipped (currently ~110 KB baseline — guard it).
+  - Editor initial JS bundle < 150 KB gzipped (currently ~110 KB baseline - guard it).
   - Installed app footprint < 25 MB on disk (Tauri webview shared with OS).
 - [ ] **Bundle-size budget step**: fail the build if the produced binary/installer
   exceeds the disk budget (mirror the example's "fails the build if exceeded").
@@ -393,7 +393,7 @@ without a noted exception.
   verify.
 - [x] **Dependency hygiene gate**: `cargo-deny` + `cargo-audit` green in CI,
   driven by `src-tauri/deny.toml` (permissive licenses only, with one explicit,
-  documented exception: `chardet` LGPL-3.0 — added in Phase 1).
+  documented exception: `chardet` LGPL-3.0 - added in Phase 1).
 - [ ] **Dependency bump policy**: Renovate or manual bump policy recorded in
   CONTRIBUTING.md.
 - [ ] **Auto-update decision**: Tauri's updater requires signed manifests + a server.
@@ -409,11 +409,11 @@ deny/audit green; reproducible-build notes published.
 
 ## Phase 9: Packaging, Installers & First Stable Release
 
-- [x] **Windows installer** — NSIS configured in `tauri.conf.json`
+- [x] **Windows installer** - NSIS configured in `tauri.conf.json`
   (`targets: "all"`, `nsis` section) and shipped by
   `.github/workflows/release-windows.yml` (tag-triggered, `tauri-action`,
   publishes a GitHub Release with the installer).
-- [x] **macOS DMG** — configured in `tauri.conf.json` (custom background,
+- [x] **macOS DMG** - configured in `tauri.conf.json` (custom background,
   ad-hoc signing `signingIdentity: "-"`, entitlements) + `scripts/post-build-macos.sh`
   for entitlement selection. Not yet wired into a release workflow.
 - [ ] **Linux**: `.deb` config exists (`targets: "all"`); no `.AppImage`
@@ -442,10 +442,10 @@ OSes with published checksums; deploy guide exists.
 
 - [ ] **AGENTS.md → authoritative spec**: finish Phase 0 reconciliation; keep it the
   single source of truth for AI agents and contributors.
-- [ ] **CONTRIBUTING.md**: already exists — extend with the test/CI/commit/lint
+- [ ] **CONTRIBUTING.md**: already exists - extend with the test/CI/commit/lint
   commands, the "no scope creep beyond editor" rule, and the i18n string-extraction
   process.
-- [ ] **DESIGN.md**: already the visual bible — add the Sepia preset + focus-ring
+- [ ] **DESIGN.md**: already the visual bible - add the Sepia preset + focus-ring
   token if Phase 6 ships; keep the "no inline hex" rule enforced via a CI style check
   (a tiny `grep` forbidding `#` color literals in `.svelte`/`.css`).
 - [ ] **README.md**: update Features/Shortcuts to match v1.1 reality; add the
@@ -464,21 +464,21 @@ explains the IPC boundary.
 These are valuable but would turn DevNote into something larger than a text editor.
 Each is listed so the line is drawn *consciously*, not by accident:
 
-- **Project explorer / file tree** (Phase 2 candidate in the original AGENTS.md) —
+- **Project explorer / file tree** (Phase 2 candidate in the original AGENTS.md) -
   deferred; risks becoming an IDE. Revisit only if a distinct "DevNote Projects" mode
   is scoped separately.
-- **Terminal pane** — out of scope; conflicts with offline-safety + attack surface.
-- **Git integration** — out of scope for v1; possible as a separate plugin later.
-- **Minimap** — nice-to-have, deferred past LTS.
-- **Collaborative / remote editing** — out of scope.
-- **Spell check / grammar** — deferred; would pull in a dictionary dependency.
-- **Plugin / extension system** — deferred; the example roadmap also lists this as
+- **Terminal pane** - out of scope; conflicts with offline-safety + attack surface.
+- **Git integration** - out of scope for v1; possible as a separate plugin later.
+- **Minimap** - nice-to-have, deferred past LTS.
+- **Collaborative / remote editing** - out of scope.
+- **Spell check / grammar** - deferred; would pull in a dictionary dependency.
+- **Plugin / extension system** - deferred; the example roadmap also lists this as
   future. Only consider after the IPC boundary + capability model are frozen.
-- **Snippet library / macro recording** — possible lightweight addition, post-LTS.
-- **ARM / Linux-ARM builds (Raspberry Pi class)** — possible once x64 LTS is stable.
-- **Additional UI languages** (French, Arabic, Dzongkha, …) — enabled by Phase 3's
+- **Snippet library / macro recording** - possible lightweight addition, post-LTS.
+- **ARM / Linux-ARM builds (Raspberry Pi class)** - possible once x64 LTS is stable.
+- **Additional UI languages** (French, Arabic, Dzongkha, …) - enabled by Phase 3's
   i18n plumbing; blocked only on translator contributions.
-- **Auto-update** — explicitly deferred (offline-first); manual download only.
+- **Auto-update** - explicitly deferred (offline-first); manual download only.
 
 ---
 
@@ -488,7 +488,7 @@ Each is listed so the line is drawn *consciously*, not by accident:
 Phase 0 (reconcile docs/status)
    │
    ▼
-Phase 1 (CI — blocks everything else)
+Phase 1 (CI - blocks everything else)
    │
    ▼
 Phase 2 (golden regression suite)

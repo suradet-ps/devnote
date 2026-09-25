@@ -12,7 +12,7 @@ export interface Tab {
   cursorLine: number;
   cursorCol: number;
   scrollTop: number;
-  /** Read-only preview (file > 50 MB) — editor is not editable. */
+  /** Read-only preview (file > 50 MB) - editor is not editable. */
   readOnly: boolean;
 }
 

@@ -9,7 +9,7 @@ import {
 
 /**
  * Visible whitespace (Roadmap Phase 4): renders spaces as `·` and tabs as `→`
- * within the visible viewport only. Pure decoration — the document is
+ * within the visible viewport only. Pure decoration - the document is
  * untouched; toggled via a Compartment.
  */
 

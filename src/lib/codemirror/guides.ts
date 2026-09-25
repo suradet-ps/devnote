@@ -3,7 +3,7 @@ import { EditorView } from '@codemirror/view';
 
 /**
  * Indent guides (Roadmap Phase 4): vertical guide lines at every tab-stop
- * column. CSS-only, render-only — a repeating gradient aligned to the tab
+ * column. CSS-only, render-only - a repeating gradient aligned to the tab
  * grid; nothing is added to the document model.
  */
 export const indentGuidesCompartment = new Compartment();

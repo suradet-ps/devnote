@@ -1,7 +1,7 @@
 /**
  * Edit-site history (Roadmap Phase 4): remembers cursor positions after edits
  * so the user can jump back/forward between edit locations (Ctrl+Alt+-/=).
- * Pure and testable — the editor wires it into its update listener.
+ * Pure and testable - the editor wires it into its update listener.
  */
 export class EditHistory {
   private positions: number[] = [];

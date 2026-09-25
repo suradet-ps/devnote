@@ -1,6 +1,6 @@
 /**
  * Ephemeral editor-derived status for the status bar (selection size).
- * Not part of the tab model — selection is transient UI state.
+ * Not part of the tab model - selection is transient UI state.
  */
 let _selectionChars = $state(0);
 let _selectionWords = $state(0);

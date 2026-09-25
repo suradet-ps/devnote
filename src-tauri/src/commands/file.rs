@@ -9,7 +9,7 @@ use tempfile::NamedTempFile;
 pub const HARD_LIMIT_BYTES: u64 = 200 * 1024 * 1024; // 200 MB
 /// Soft cap: frontend prompts the user to confirm before opening.
 pub const SOFT_LIMIT_BYTES: u64 = 10 * 1024 * 1024; // 10 MB
-/// Above this size the file opens in read-only preview mode — the editor
+/// Above this size the file opens in read-only preview mode - the editor
 /// never loads huge documents for editing, so it cannot OOM on a log file.
 pub const PREVIEW_LIMIT_BYTES: u64 = 50 * 1024 * 1024; // 50 MB
 /// Number of bytes to inspect for binary detection.
@@ -148,7 +148,7 @@ fn utf16_bytes(s: &str, big_endian: bool) -> Vec<u8> {
 }
 
 fn encode_content(content: &str, line_ending: &str, encoding: &str) -> Vec<u8> {
-  // "LF" must normalize too — otherwise a CRLF-loaded buffer stays CRLF
+  // "LF" must normalize too - otherwise a CRLF-loaded buffer stays CRLF
   // even when the user explicitly saves with LF endings.
   let normalized: String = match line_ending {
     "CRLF" => normalize_line_endings(content, "\r\n"),
@@ -296,7 +296,7 @@ async fn read_file_internal(path: &str) -> Result<FilePayload, String> {
     .await
     .map_err(|e| format!("Failed to read file: {}", e))?;
 
-  // UTF-16 text is full of NUL bytes — that is structural, not binary.
+  // UTF-16 text is full of NUL bytes - that is structural, not binary.
   let has_utf16_bom = bytes.starts_with(b"\xFF\xFE") || bytes.starts_with(b"\xFE\xFF");
   if is_binary(&bytes) && !has_utf16_bom {
     return Err("Refusing to open: file appears to be binary".to_string());
@@ -355,7 +355,7 @@ pub async fn save_file(
 
   let data = encode_content(&content, &le, &enc);
   write_atomic(&p, data).await?;
-  // The atomic rename produces a fs event that would look external — suppress
+  // The atomic rename produces a fs event that would look external - suppress
   // it so the watcher does not prompt about our own save. The watcher keys on
   // canonical paths, so canonicalize here too.
   let canonical = std::fs::canonicalize(&p).unwrap_or(p);
@@ -691,7 +691,7 @@ mod tests {
     assert_eq!(payload.encoding, "UTF-8");
     assert_eq!(payload.content, sample);
 
-    // UTF-8 with BOM — BOM stripped, encoding reported as UTF-8
+    // UTF-8 with BOM - BOM stripped, encoding reported as UTF-8
     let mut bom = b"\xEF\xBB\xBF".to_vec();
     bom.extend_from_slice(sample.as_bytes());
     let p = write_file(&dir, "b.txt", &bom).await;
@@ -797,7 +797,7 @@ mod tests {
     assert_eq!(payload.content, sample);
     assert!(payload.encoding_confident);
 
-    // Reading the same bytes as windows-1252 yields mojibake — but the point
+    // Reading the same bytes as windows-1252 yields mojibake - but the point
     // is the command honors the user's choice without erroring
     let payload2 = read_file_with_encoding(
       path.to_string_lossy().to_string(),

@@ -52,7 +52,7 @@
       effects: EditorView.scrollIntoView(m.from, { y: 'center' }),
     });
     // Only steal focus for explicit navigation (F3 / Enter). While the user
-    // is still typing in the find field the editor must NOT grab focus —
+    // is still typing in the find field the editor must NOT grab focus -
     // otherwise the rest of the query types into the document.
     if (opts.focus) targetView.focus();
   }
@@ -118,7 +118,7 @@
         });
       },
       (view) => {
-        // Edits shift match positions — recompute on next F3/Enter nav
+        // Edits shift match positions - recompute on next F3/Enter nav
         searchMatches = [];
         searchIndex = -1;
         // Record edit sites; programmatic content syncs (tab switch,
@@ -142,7 +142,7 @@
 
   async function handleEditorAction(action: EditorAction) {
     if (!view) return;
-    // Read-only previews must not be mutated by programmatic actions either —
+    // Read-only previews must not be mutated by programmatic actions either -
     // CodeMirror's readOnly only blocks user transactions, not dispatches.
     if (
       view.state.readOnly &&

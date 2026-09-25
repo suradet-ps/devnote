@@ -1,5 +1,5 @@
 /**
- * UI string tables (Roadmap Phase 3 — i18n plumbing).
+ * UI string tables (Roadmap Phase 3 - i18n plumbing).
  * `en` is the source of truth; `th` must cover every key (enforced by the
  * `Record<MessageKey, string>` type).
  */
@@ -70,7 +70,7 @@ const en = {
   'dialog.largeFileTitle': 'Large File',
   'dialog.largeFileBody': 'This file is {size} MB. Opening large files may be slow. Continue?',
   'dialog.cannotSaveTitle': 'Cannot Save',
-  'dialog.cannotSaveBody': 'Cannot save "{name}" — the file is read-only. Save a copy instead?',
+  'dialog.cannotSaveBody': 'Cannot save "{name}" - the file is read-only. Save a copy instead?',
   'toast.saveFailed': 'Failed to save: {error}',
   'toast.saveAsFailed': 'Failed to save as: {error}',
   'toast.readOnly': 'This file is open in read-only preview mode.',
@@ -158,7 +158,7 @@ const th: Record<MessageKey, string> = {
   'dialog.largeFileTitle': 'ไฟล์ขนาดใหญ่',
   'dialog.largeFileBody': 'ไฟล์นี้มีขนาด {size} MB การเปิดไฟล์ขนาดใหญ่อาจช้า ต้องการเปิดต่อหรือไม่?',
   'dialog.cannotSaveTitle': 'ไม่สามารถบันทึกได้',
-  'dialog.cannotSaveBody': 'ไม่สามารถบันทึก "{name}" — ไฟล์เป็นแบบอ่านอย่างเดียว ต้องการบันทึกสำเนาแทนหรือไม่?',
+  'dialog.cannotSaveBody': 'ไม่สามารถบันทึก "{name}" - ไฟล์เป็นแบบอ่านอย่างเดียว ต้องการบันทึกสำเนาแทนหรือไม่?',
   'toast.saveFailed': 'บันทึกไม่สำเร็จ: {error}',
   'toast.saveAsFailed': 'บันทึกเป็นไม่สำเร็จ: {error}',
   'toast.readOnly': 'ไฟล์นี้เปิดในโหมดตัวอย่างแบบอ่านอย่างเดียว',

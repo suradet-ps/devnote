@@ -18,7 +18,7 @@ pub async fn write_recovery_file(dir: &Path, entries: &[RecoveryEntry]) -> Resul
 }
 
 /// Read recovery entries from `dir`. Missing file, empty list, and malformed
-/// JSON all resolve to `Ok(None)` — a corrupt recovery file must never block
+/// JSON all resolve to `Ok(None)` - a corrupt recovery file must never block
 /// startup.
 pub async fn read_recovery_file(dir: &Path) -> Result<Option<Vec<RecoveryEntry>>, String> {
   let path = dir.join("recovery.json");
@@ -165,7 +165,7 @@ mod tests {
 
   #[tokio::test]
   async fn data_survives_when_not_cleared() {
-    // "Cancel" in the restore dialog performs no clear — recovery must persist.
+    // "Cancel" in the restore dialog performs no clear - recovery must persist.
     let dir = TempDir::new().unwrap();
     write_recovery_file(
       dir.path(),

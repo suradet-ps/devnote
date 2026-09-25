@@ -20,7 +20,7 @@ allow = [
     "Zlib",
 ]
 exceptions = [
-    # chardet (LGPL-3.0) — EXPLICIT EXCEPTION (Roadmap Phase 1/8): charset-
+    # chardet (LGPL-3.0) - EXPLICIT EXCEPTION (Roadmap Phase 1/8): charset-
     # detection helper, direct dependency. Weak copyleft accepted deliberately
     # for the offline encoding-detection feature; obligations documented in
     # docs/ROADMAP.md. Revisit a permissive replacement (e.g. chardetng).
@@ -38,13 +38,13 @@ unknown-git = "deny"
 # Unmaintained advisories only fail when they hit our direct dependencies.
 # Transitive unmaintained crates are upstream's concern (e.g. the gtk-rs
 # GTK3 bindings that Tauri's Linux backend is built on; rust-unic tables via
-# urlpattern; proc-macro-error) — they have no permissive replacement and
+# urlpattern; proc-macro-error) - they have no permissive replacement and
 # no patched version, so failing on them adds noise without signal.
 unmaintained = "workspace"
 ignore = [
     # quick-xml 0.39 remains in the Linux build-tool chain only:
     # wayland-scanner (proc-macro) parses trusted, bundled wayland protocol
-    # XML at build time — not reachable by untrusted input. The runtime XML
+    # XML at build time - not reachable by untrusted input. The runtime XML
     # path (plist) is already on quick-xml 0.41.0 (patched) via plist 1.10.0.
     { id = "RUSTSEC-2026-0194", reason = "build-time proc-macro (wayland-scanner) on trusted bundled XML; runtime path patched via plist 1.10.0 -> quick-xml 0.41.0" },
     { id = "RUSTSEC-2026-0195", reason = "same as RUSTSEC-2026-0194: wayland-scanner build tooling only; runtime path on quick-xml 0.41.0" },
