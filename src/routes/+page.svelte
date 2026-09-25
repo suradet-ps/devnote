@@ -377,7 +377,7 @@
       return;
     }
     const dirty = tab.content !== tab.savedContent ? '\u2022 ' : '';
-    const title = `${dirty}${tab.fileName} \u2014 DevNote`;
+    const title = `${dirty}${tab.fileName} - DevNote`;
     ipc.setWindowTitle(title).catch(() => {});
   }
 
