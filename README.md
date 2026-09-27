@@ -1,13 +1,12 @@
 # DevNote
 
-```
-██████╗ ███████╗██╗   ██╗███╗   ██╗ ██████╗ ████████╗███████╗
-██╔══██╗██╔════╝██║   ██║████╗  ██║██╔═══██╗╚══██╔══╝██╔════╝
-██║  ██║█████╗  ██║   ██║██╔██╗ ██║██║   ██║   ██║   █████╗
-██║  ██║██╔══╝  ╚██╗ ██╔╝██║╚██╗██║██║   ██║   ██║   ██╔══╝
-██████╔╝███████╗ ╚████╔╝ ██║ ╚████║╚██████╔╝   ██║   ███████╗
-╚═════╝ ╚══════╝  ╚═══╝  ╚═╝  ╚═══╝ ╚═════╝    ╚═╝   ╚══════╝
-```
+[![CI](https://github.com/suradet-ps/devnote/actions/workflows/ci.yml/badge.svg)](https://github.com/suradet-ps/devnote/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Rust: stable](https://img.shields.io/badge/rust-stable-orange.svg?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Tauri v2](https://img.shields.io/badge/Tauri-v2-24c8db.svg?logo=tauri&logoColor=white)](https://tauri.app/)
+[![Svelte v5](https://img.shields.io/badge/Svelte-v5-FF3E00.svg?logo=svelte&logoColor=white)](https://svelte.dev/)
+[![TypeScript v5](https://img.shields.io/badge/TypeScript-v5-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/suradet-ps/devnote/issues)
 
 ---
 
