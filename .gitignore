@@ -3,5 +3,6 @@ build/
 .svelte-kit/
 dist/
 src-tauri/target/
+gpui-app/target/
 *.log
 .DS_Store
