@@ -1,11 +1,12 @@
 //! Pure find/replace engine, ported from `src/lib/editor/search.ts`.
 //!
-//! Literal searches are `$`-safe; regex searches support `$1`, `$&`, ...
-//! Invalid regexes yield no matches instead of throwing.
+//! Literal searches are `$`-safe; regex searches expand capture references
+//! (`$0`, `$1`, `${name}`, ...) like the `regex` crate. Invalid regexes yield
+//! no matches instead of throwing.
 
 use std::ops::Range;
 
-use regex::{NoExpand, Regex, RegexBuilder};
+use regex::{Regex, RegexBuilder};
 
 #[derive(Clone, Copy, Default)]
 pub struct SearchOptions {
@@ -59,26 +60,67 @@ pub fn find_next_from(
         .cloned()
 }
 
-/// Replace every match. Returns the new content and the replacement count.
+/// Expand `replacement` for the single match at `range`:
+/// regex mode expands `$1`, `$&`, ... like `replace_all`; literal mode is
+/// `$`-safe. Falls back to the literal replacement when the regex does not
+/// re-match the exact range.
+pub fn expand_replacement(
+    content: &str,
+    query: &str,
+    replacement: &str,
+    range: &Range<usize>,
+    opts: SearchOptions,
+) -> String {
+    if !opts.use_regex {
+        return replacement.to_string();
+    }
+    let Some(re) = build_regex(query, opts) else {
+        return replacement.to_string();
+    };
+    expand_with_regex(&re, content, range, replacement)
+}
+
+fn expand_with_regex(re: &Regex, content: &str, range: &Range<usize>, replacement: &str) -> String {
+    let Some(caps) = re.captures_at(content, range.start) else {
+        return replacement.to_string();
+    };
+    if caps.get(0).map(|m| m.start()..m.end()) != Some(range.clone()) {
+        return replacement.to_string();
+    }
+    let mut expanded = String::new();
+    caps.expand(replacement, &mut expanded);
+    expanded
+}
+
+/// Replace every non-empty match. Returns the new content and the replacement
+/// count (always equal to the number of matches replaced).
 pub fn replace_all(
     content: &str,
     query: &str,
     replacement: &str,
     opts: SearchOptions,
 ) -> (String, usize) {
-    let Some(re) = build_regex(query, opts) else {
-        return (content.to_string(), 0);
-    };
-    let count = find_all(content, query, opts).len();
-    if count == 0 {
+    let matches = find_all(content, query, opts);
+    if matches.is_empty() {
         return (content.to_string(), 0);
     }
-    let result = if opts.use_regex {
-        re.replace_all(content, replacement).into_owned()
+    let re = if opts.use_regex {
+        build_regex(query, opts)
     } else {
-        re.replace_all(content, NoExpand(replacement)).into_owned()
+        None
     };
-    (result, count)
+    let mut out = String::with_capacity(content.len());
+    let mut last = 0;
+    for range in &matches {
+        out.push_str(&content[last..range.start]);
+        match &re {
+            Some(re) => out.push_str(&expand_with_regex(re, content, range, replacement)),
+            None => out.push_str(replacement),
+        }
+        last = range.end;
+    }
+    out.push_str(&content[last..]);
+    (out, matches.len())
 }
 
 #[cfg(test)]
@@ -144,5 +186,53 @@ mod tests {
             use_regex: true,
         };
         assert!(find_all("abc", "x*", opts).is_empty());
+    }
+
+    #[test]
+    fn replace_all_skips_zero_length_matches() {
+        let opts = SearchOptions {
+            case_sensitive: false,
+            use_regex: true,
+        };
+        // `a*` also matches empty strings at offsets 0 and 2; only the
+        // non-empty match is replaced and counted.
+        let (out, count) = replace_all("ba", "a*", "X", opts);
+        assert_eq!(out, "bX");
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn replace_all_count_matches_replaced_spans() {
+        let opts = SearchOptions {
+            case_sensitive: false,
+            use_regex: true,
+        };
+        let (out, count) = replace_all("ab ab ab", "b", "[$0]", opts);
+        assert_eq!(out, "a[b] a[b] a[b]");
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn expand_replacement_expands_captures_for_single_match() {
+        let opts = SearchOptions {
+            case_sensitive: false,
+            use_regex: true,
+        };
+        let content = "first last";
+        let range = 0..content.len();
+        assert_eq!(
+            expand_replacement(content, r"(\w+) (\w+)", "$2 $1", &range, opts),
+            "last first"
+        );
+    }
+
+    #[test]
+    fn expand_replacement_is_literal_outside_regex_mode() {
+        let content = "price";
+        let range = 0..content.len();
+        assert_eq!(
+            expand_replacement(content, "price", "$100", &range, SearchOptions::default()),
+            "$100"
+        );
     }
 }

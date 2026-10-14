@@ -412,9 +412,12 @@ impl EntityInputHandler for TextInput {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<usize> {
+        // `localize` converts the window-space point to input-local
+        // coordinates, which is exactly the space `index_for_x` expects
+        // (same as `index_for_mouse_position` above).
         let line_point = self.last_bounds?.localize(&point)?;
         let last_layout = self.last_layout.as_ref()?;
-        let utf8_index = last_layout.index_for_x(point.x - line_point.x)?;
+        let utf8_index = last_layout.index_for_x(line_point.x)?;
         Some(self.offset_to_utf16(utf8_index))
     }
 }

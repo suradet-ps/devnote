@@ -315,11 +315,36 @@ impl DevNoteApp {
             return;
         };
         let replacement = self.replace_input.read(cx).text().to_string();
+        let query = self.find_input.read(cx).text().to_string();
+        let options = self.search_options();
         if let Some(doc) = self.active_doc_mut() {
-            doc.replace_range(range, &replacement);
+            let expanded =
+                find::expand_replacement(&doc.content, &query, &replacement, &range, options);
+            doc.replace_range(range, &expanded);
         }
+        // Recompute first, then select the match the recompute points at;
+        // calling `goto_match` here would advance past it a second time.
         self.recompute_matches(cx);
-        self.goto_match(true, window, cx);
+        let selected = if let Some(current) = self.find.current
+            && let Some(range) = self.find.matches.get(current).cloned()
+        {
+            if let Some(doc) = self.active_doc_mut() {
+                doc.move_to(range.start, false);
+                doc.select_to(range.end);
+            }
+            Some(current)
+        } else {
+            None
+        };
+        self.after_edit(window, cx);
+        // `after_edit` re-derives `current` from the caret (which sits at the
+        // end of the freshly selected match); keep the selected match current
+        // so the highlight and the selection stay in sync.
+        if let Some(current) = selected
+            && current < self.find.matches.len()
+        {
+            self.find.current = Some(current);
+        }
     }
 
     fn replace_all_matches(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -498,14 +523,20 @@ impl DevNoteApp {
         let Some(kind) = self.dialog else {
             return;
         };
-        let dirty: Vec<usize> = self
-            .docs
-            .iter()
-            .enumerate()
-            .filter(|(_, d)| d.is_dirty())
-            .map(|(i, _)| i)
-            .collect();
-        for index in dirty {
+        let targets: Vec<usize> = match kind {
+            DialogKind::CloseWindow => self
+                .docs
+                .iter()
+                .enumerate()
+                .filter(|(_, d)| d.is_dirty())
+                .map(|(i, _)| i)
+                .collect(),
+            DialogKind::CloseTab => match self.active_doc() {
+                Some(doc) if doc.is_dirty() => vec![self.active],
+                _ => Vec::new(),
+            },
+        };
+        for index in targets {
             if !self.save_doc(index, false, window, cx) {
                 // Save cancelled or failed - keep the dialog open.
                 return;
@@ -818,8 +849,12 @@ impl DevNoteApp {
         self.after_edit(window, cx);
     }
 
-    fn on_quit(&mut self, _: &QuitApp, _window: &mut Window, cx: &mut Context<Self>) {
-        cx.quit();
+    fn on_quit(&mut self, _: &QuitApp, window: &mut Window, cx: &mut Context<Self>) {
+        // Route quits through the same guarded close flow as the window's
+        // close button so dirty documents get their confirmation dialog.
+        if self.request_close(cx) {
+            window.remove_window();
+        }
     }
 
     fn on_toggle_find(&mut self, _: &ToggleFind, window: &mut Window, cx: &mut Context<Self>) {
@@ -895,7 +930,7 @@ impl DevNoteApp {
         cx: &mut Context<Self>,
     ) {
         self.font_size = (self.font_size + 1.0).min(32.0);
-        self.persist_font_size();
+        self.persist_font_size(cx);
         self.after_edit(window, cx);
     }
 
@@ -906,19 +941,26 @@ impl DevNoteApp {
         cx: &mut Context<Self>,
     ) {
         self.font_size = (self.font_size - 1.0).max(9.0);
-        self.persist_font_size();
+        self.persist_font_size(cx);
         self.after_edit(window, cx);
     }
 
     fn on_reset_font(&mut self, _: &ResetFontSize, window: &mut Window, cx: &mut Context<Self>) {
         self.font_size = 14.0;
-        self.persist_font_size();
+        self.persist_font_size(cx);
         self.after_edit(window, cx);
     }
 
-    fn persist_font_size(&mut self) {
+    fn persist_font_size(&mut self, cx: &mut Context<Self>) {
         self.settings.font_size = self.font_size;
-        self.settings.save();
+        self.persist_settings(cx);
+    }
+
+    fn persist_settings(&mut self, cx: &mut Context<Self>) {
+        if let Err(error) = self.settings.save() {
+            let message = format!("{}: {}", self.i18n.t("error_save"), error);
+            self.push_toast(message, true, cx);
+        }
     }
 
     fn on_toggle_theme(&mut self, _: &ToggleTheme, window: &mut Window, cx: &mut Context<Self>) {
@@ -928,7 +970,7 @@ impl DevNoteApp {
             ThemeChoice::Dark => ThemeChoice::System,
         };
         self.settings.theme = self.theme_choice;
-        self.settings.save();
+        self.persist_settings(cx);
         self.sync_theme(window, cx);
         cx.notify();
     }

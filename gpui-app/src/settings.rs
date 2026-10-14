@@ -53,10 +53,9 @@ impl Settings {
         settings
     }
 
-    pub fn save(&self) {
-        // Persisting settings is best-effort; failure surfaces as a toast on
-        // the next explicit user action instead of crashing the app.
-        let _ = files::write_json("settings.json", self);
+    /// Persist to `settings.json`; callers surface failures as a toast.
+    pub fn save(&self) -> Result<(), String> {
+        files::write_json("settings.json", self)
     }
 
     pub fn locale(&self) -> Locale {

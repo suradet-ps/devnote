@@ -39,11 +39,15 @@ pub struct Document {
     redo_stack: Vec<Snapshot>,
 }
 
+/// One reversible edit: the replaced byte range, the text that was removed,
+/// the text that was inserted, and the caret/anchor before the edit.
 #[derive(Clone)]
 struct Snapshot {
-    content: String,
-    caret: usize,
-    anchor: usize,
+    range: Range<usize>,
+    removed: String,
+    inserted: String,
+    caret_before: usize,
+    anchor_before: usize,
 }
 
 impl Document {
@@ -184,14 +188,19 @@ impl Document {
 
     // -- mutation ----------------------------------------------------------
 
-    fn snapshot(&mut self) {
+    /// Record an edit before it is applied. Stores a delta (range + removed
+    /// text) instead of cloning the whole buffer, so each keystroke costs
+    /// O(edit size) rather than O(document size).
+    fn snapshot(&mut self, range: &Range<usize>, inserted: &str) {
         if self.read_only {
             return;
         }
         self.undo_stack.push(Snapshot {
-            content: self.content.clone(),
-            caret: self.caret,
-            anchor: self.anchor,
+            range: range.clone(),
+            removed: self.content[range.clone()].to_string(),
+            inserted: inserted.to_string(),
+            caret_before: self.caret,
+            anchor_before: self.anchor,
         });
         if self.undo_stack.len() > UNDO_LIMIT {
             self.undo_stack.remove(0);
@@ -203,17 +212,15 @@ impl Document {
         if self.read_only {
             return;
         }
-        if let Some(snapshot) = self.undo_stack.pop() {
-            self.redo_stack.push(Snapshot {
-                content: self.content.clone(),
-                caret: self.caret,
-                anchor: self.anchor,
-            });
-            self.content = snapshot.content;
-            self.caret = snapshot.caret.min(self.content.len());
-            self.anchor = snapshot.anchor.min(self.content.len());
+        if let Some(entry) = self.undo_stack.pop() {
+            let start = entry.range.start;
+            let end = (start + entry.inserted.len()).min(self.content.len());
+            self.content.replace_range(start..end, &entry.removed);
+            self.caret = entry.caret_before.min(self.content.len());
+            self.anchor = entry.anchor_before.min(self.content.len());
             self.marked_range = None;
             self.rebuild_lines();
+            self.redo_stack.push(entry);
         }
     }
 
@@ -221,17 +228,16 @@ impl Document {
         if self.read_only {
             return;
         }
-        if let Some(snapshot) = self.redo_stack.pop() {
-            self.undo_stack.push(Snapshot {
-                content: self.content.clone(),
-                caret: self.caret,
-                anchor: self.anchor,
-            });
-            self.content = snapshot.content;
-            self.caret = snapshot.caret.min(self.content.len());
-            self.anchor = snapshot.anchor.min(self.content.len());
+        if let Some(entry) = self.redo_stack.pop() {
+            let start = entry.range.start;
+            let end = (start + entry.removed.len()).min(self.content.len());
+            self.content.replace_range(start..end, &entry.inserted);
+            // `replace_range` leaves the caret after the inserted text.
+            self.caret = (start + entry.inserted.len()).min(self.content.len());
+            self.anchor = self.caret;
             self.marked_range = None;
             self.rebuild_lines();
+            self.undo_stack.push(entry);
         }
     }
 
@@ -241,7 +247,7 @@ impl Document {
             return;
         }
         let range = clamp_range(range, self.content.len());
-        self.snapshot();
+        self.snapshot(&range, text);
         self.content.replace_range(range.clone(), text);
         self.caret = range.start + text.len();
         self.anchor = self.caret;
@@ -519,6 +525,39 @@ mod tests {
         assert_eq!(d.content, "hello");
         d.redo();
         assert_eq!(d.content, "hello world");
+    }
+
+    #[test]
+    fn undo_redo_across_multiple_edits() {
+        let mut d = doc("hello");
+        d.mark_saved();
+        d.replace_range(5..5, " world"); // "hello world"
+        d.replace_range(0..5, "goodbye"); // "goodbye world"
+        d.undo();
+        assert_eq!(d.content, "hello world");
+        d.undo();
+        assert_eq!(d.content, "hello");
+        d.redo();
+        assert_eq!(d.content, "hello world");
+        d.redo();
+        assert_eq!(d.content, "goodbye world");
+        // A fresh edit clears the redo stack.
+        d.undo();
+        d.replace_range(0..0, "x");
+        d.redo();
+        assert_eq!(d.content, "xhello world");
+    }
+
+    #[test]
+    fn undo_restores_caret_before_edit() {
+        let mut d = doc("hello");
+        d.move_to(2, false);
+        d.replace_range(2..2, "XY");
+        assert_eq!(d.content, "heXYllo");
+        assert_eq!(d.caret, 4);
+        d.undo();
+        assert_eq!(d.content, "hello");
+        assert_eq!(d.caret, 2);
     }
 
     #[test]

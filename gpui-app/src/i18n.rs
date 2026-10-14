@@ -156,7 +156,7 @@ fn th(key: &'static str) -> &'static str {
         "error_save" => "ไม่สามารถบันทึกไฟล์ได้",
         "error_too_large" => "ไฟล์ใหญ่เกินไป (จำกัด 200 MB)",
         "error_binary" => "ปฏิเสธการเปิด: ไฟล์ดูเหมือนเป็นไบนารี",
-        "error_low_confidence" => "การตรวจจับ encoding อาจไม่แม่นยำ",
+        "error_low_confidence" => "การตรวจจับ encoding อาจไม่แม่นยำ - การบันทึกอาจทำให้ไฟล์เปลี่ยนไป",
         "file_read_only" => "ไฟล์ขนาดใหญ่ - เปิดแบบอ่านอย่างเดียว",
         "matches" => "รายการ",
         _ => key,

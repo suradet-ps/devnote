@@ -84,15 +84,22 @@ pub fn detect_encoding(bytes: &[u8]) -> (&'static Encoding, bool) {
     if std::str::from_utf8(bytes).is_ok() {
         return (encoding_rs::UTF_8, true);
     }
-    let (enc, confidence, _has_bom) = chardet::detect(bytes);
-    let mapped = match enc.as_str() {
-        "UTF-8" | "ascii" | "ASCII" => encoding_rs::UTF_8,
-        "UTF-16LE" => encoding_rs::UTF_16LE,
-        "UTF-16BE" => encoding_rs::UTF_16BE,
-        "windows-1252" | "ISO-8859-1" | "iso-8859-1" | "ISO-8859-15" => encoding_rs::WINDOWS_1252,
-        _ => encoding_rs::UTF_8,
+    let (label, confidence, _has_bom) = chardet::detect(bytes);
+    let label = label.to_ascii_lowercase();
+    // "ascii" is a WHATWG alias for windows-1252, but chardet only reports it
+    // for pure-ASCII text, which decodes identically as UTF-8.
+    let mapped = if label == "ascii" {
+        Some(encoding_rs::UTF_8)
+    } else {
+        // Resolves every WHATWG label chardet can emit (windows-1252,
+        // tis-620 -> windows-874, shift_jis, gb18030, ...); anything unknown
+        // falls back to UTF-8 with low confidence so the read is flagged.
+        Encoding::for_label(label.as_bytes())
     };
-    (mapped, confidence >= ENCODING_CONFIDENCE_THRESHOLD)
+    match mapped {
+        Some(encoding) => (encoding, confidence >= ENCODING_CONFIDENCE_THRESHOLD),
+        None => (encoding_rs::UTF_8, false),
+    }
 }
 
 pub fn detect_line_ending(content: &str) -> &'static str {
@@ -150,7 +157,10 @@ fn utf16_bytes(s: &str, big_endian: bool) -> Vec<u8> {
     out
 }
 
-pub fn encode_content(content: &str, line_ending: &str, encoding: &str) -> Vec<u8> {
+/// Encode `content` for saving. Fails when the target encoding cannot
+/// represent every character (the encoders would otherwise silently substitute
+/// numeric character references and corrupt the file on save).
+pub fn encode_content(content: &str, line_ending: &str, encoding: &str) -> Result<Vec<u8>, String> {
     // "LF" must normalize too - otherwise a CRLF-loaded buffer stays CRLF
     // even when the user explicitly saves with LF endings.
     let normalized: String = match line_ending {
@@ -162,15 +172,29 @@ pub fn encode_content(content: &str, line_ending: &str, encoding: &str) -> Vec<u
         "UTF-16LE" => {
             let mut out = vec![0xFF, 0xFE];
             out.extend_from_slice(&utf16_bytes(&normalized, false));
-            out
+            Ok(out)
         }
         "UTF-16BE" => {
             let mut out = vec![0xFE, 0xFF];
             out.extend_from_slice(&utf16_bytes(&normalized, true));
-            out
+            Ok(out)
         }
-        "windows-1252" | "Windows-1252" => encoding_rs::WINDOWS_1252.encode(&normalized).0.to_vec(),
-        _ => normalized.as_bytes().to_vec(),
+        "windows-1252" | "Windows-1252" | "windows-874" | "Windows-874" => {
+            let enc = if encoding.eq_ignore_ascii_case("windows-874") {
+                encoding_rs::WINDOWS_874
+            } else {
+                encoding_rs::WINDOWS_1252
+            };
+            let (bytes, _, had_unmappable) = enc.encode(&normalized);
+            if had_unmappable {
+                return Err(format!(
+                    "Text contains characters that {encoding} cannot represent; \
+                     save with UTF-8 instead"
+                ));
+            }
+            Ok(bytes.into_owned())
+        }
+        _ => Ok(normalized.as_bytes().to_vec()),
     }
 }
 
@@ -288,7 +312,7 @@ pub fn save_file(
     line_ending: &str,
     encoding: &str,
 ) -> Result<(), String> {
-    let data = encode_content(content, line_ending, encoding);
+    let data = encode_content(content, line_ending, encoding)?;
     write_atomic(path, &data)
 }
 
@@ -372,9 +396,27 @@ mod tests {
 
     #[test]
     fn encode_content_emits_utf16_boms() {
-        let out = encode_content("hi", "LF", "UTF-16LE");
+        let out = encode_content("hi", "LF", "UTF-16LE").expect("encode");
         assert_eq!(out[..2], [0xFF, 0xFE]);
         assert_eq!(out.len(), 2 + 4);
+    }
+
+    #[test]
+    fn detect_encoding_maps_chardet_labels_via_whatwg() {
+        // Thai TIS-620 bytes (0xA1 0xC3 0xD8 = "กขค" in TIS-620/874).
+        let bytes = [0xA1, 0xC3, 0xD8];
+        let (enc, confident) = detect_encoding(&bytes);
+        assert_eq!(enc.name(), "windows-874");
+        assert!(confident);
+    }
+
+    #[test]
+    fn encode_content_rejects_unmappable_windows_1252_text() {
+        // Thai characters cannot be represented in windows-1252.
+        let err = encode_content("สวัสดี", "LF", "windows-1252").unwrap_err();
+        assert!(err.contains("windows-1252"), "unexpected error: {err}");
+        // Representable text still encodes.
+        assert!(encode_content("café", "LF", "windows-1252").is_ok());
     }
 
     #[test]

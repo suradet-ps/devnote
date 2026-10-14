@@ -169,10 +169,12 @@ impl Element for EditorElement {
         let line_count = doc.line_count();
         let gutter = gutter_width(show_numbers, line_count);
 
-        // Visible line window (with one line of overdraw each side).
-        let window_bounds = window.bounds();
-        let top_visible = ((window_bounds.top() - bounds.top()) / px(line_height)).floor();
-        let bottom_visible = ((window_bounds.bottom() - bounds.top()) / px(line_height)).ceil();
+        // Visible line window (with one line of overdraw each side). Use the
+        // clip mask (scroll viewport), not the window bounds - the window
+        // origin has nothing to do with where this element is scrolled to.
+        let mask_bounds = window.content_mask().bounds;
+        let top_visible = ((mask_bounds.top() - bounds.top()) / px(line_height)).floor();
+        let bottom_visible = ((mask_bounds.bottom() - bounds.top()) / px(line_height)).ceil();
         let first = (top_visible.max(0.0) as usize).saturating_sub(1);
         let last = ((bottom_visible.max(0.0) as usize) + 1).min(line_count);
 
@@ -268,15 +270,11 @@ impl Element for EditorElement {
                         && line + 1 < line_count)
                 {
                     let local_start = start - range.start;
-                    let mut local_end = (end - range.start).min(line_len);
+                    let local_end = (end - range.start).min(line_len).max(local_start);
                     let mut x2 = shaped.x_for_index(local_end);
                     // Show a small tail when the newline itself is selected.
-                    if selection.end > range.end || (end == range.end && selection.end > range.end)
-                    {
+                    if selection.end > range.end {
                         x2 += px(6.0);
-                    }
-                    if local_end <= local_start {
-                        local_end = local_start;
                     }
                     Some((shaped.x_for_index(local_start), x2))
                 } else {

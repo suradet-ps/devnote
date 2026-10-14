@@ -232,6 +232,16 @@ jobs:
         # 1.10.0. Rationale documented in src-tauri/deny.toml.
         run: cargo audit --ignore RUSTSEC-2026-0194 --ignore RUSTSEC-2026-0195
 
+      # The GPUI port is an independent package with its own lockfile - it
+      # needs its own advisory/license coverage (gpui-app/deny.toml).
+      - name: cargo deny check (gpui-app)
+        working-directory: gpui-app
+        run: cargo deny check
+
+      - name: cargo audit (gpui-app)
+        working-directory: gpui-app
+        run: cargo audit
+
   # ── Conventional Commits: enforce PR title style for automated changelog ──
   conventional-commits:
     name: Conventional Commits (PR title)
