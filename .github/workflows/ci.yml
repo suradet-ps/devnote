@@ -154,6 +154,55 @@ jobs:
       - name: Tauri release build (deb bundle smoke)
         run: bun run tauri build --bundles deb
 
+  # ── GPUI port: pure-Rust notepad (gpui-app) ────────────────────────
+  # Linux is not in the matrix yet: GPUI 0.2.x needs X11/Wayland dev
+  # libraries that are not wired up on the runner. macOS + Windows cover
+  # the two shipping targets.
+  gpui-app:
+    name: GPUI App (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: gpui-app
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            gpui-app/target
+          key: ${{ runner.os }}-gpui-cargo-${{ hashFiles('gpui-app/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-gpui-cargo-
+
+      - name: Cargo fmt --check
+        run: cargo fmt --check
+
+      - name: Cargo check
+        run: cargo check --locked
+
+      - name: Cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Cargo test
+        run: cargo test
+
   # ── Dependency hygiene: licenses (cargo-deny) + advisories (cargo-audit) ──
   dependency-gate:
     name: Dependency Gate (deny + audit)
